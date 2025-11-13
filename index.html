@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Java Visualizer – Chapters 9–12</title>
+
+<!-- Mobile friendly -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PWA manifest + theme color -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4e6cff">
+
+<style>
+  :root {
+    --bg: #f3f4f9;
+    --accent: #4e6cff;
+    --code-bg: #1e1e1e;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Consolas, "Courier New", monospace;
+    background: var(--bg);
+    margin: 0;
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto 40px;
+    padding: 16px;
+  }
+
+  h1, h2 {
+    text-align: center;
+    margin: 4px 0;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+  }
+  h2 {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: #333;
+  }
+
+  /* Chapter tabs */
+  #chapterTabs {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0;
+  }
+  .chap-tab {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid #555;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .chap-tab.active {
+    background: var(--accent);
+    color: #fff;
+    transform: translateY(-1px);
+  }
+
+  /* Highlight controls (sticky on mobile) */
+  #controlsWrapper {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: rgba(243,244,249,0.97);
+    backdrop-filter: blur(4px);
+    padding: 8px 0 4px;
+    border-bottom: 1px solid #d0d2e0;
+  }
+
+  #controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin: 4px 0;
+  }
+  button {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid #444;
+    cursor: pointer;
+    background: #fff;
+    font-size: 0.8rem;
+  }
+  button:hover {
+    background: #e4e4e4;
+  }
+
+  .legend {
+    font-size: 0.75rem;
+    margin: 4px 0 10px;
+    text-align: center;
+  }
+  .legend span {
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin: 0 4px 4px;
+    display: inline-block;
+  }
+
+  .field { background: rgba(0, 200, 255, 0.35); }
+  .ctor  { background: rgba(0, 255, 0, 0.35); }
+  .stat  { background: rgba(255, 165, 0, 0.35); }
+  .thisc { background: rgba(255, 0, 255, 0.35); }
+  .newc  { background: rgba(255, 0, 0, 0.35); }
+  .inh   { background: rgba(155, 89, 182, 0.35); }
+  .exc   { background: rgba(231, 76, 60, 0.35); }
+
+  /* Chapters */
+  .chapter-section {
+    display: none;
+    animation: fadeIn 0.25s ease-in;
+  }
+  .chapter-section.active-chap {
+    display: block;
+  }
+
+  .code-title {
+    font-weight: bold;
+    margin-top: 18px;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+  }
+
+  .code-block {
+    background: var(--code-bg);
+    color: #eaeaea;
+    padding: 12px;
+    border-radius: 10px;
+    overflow-x: auto;
+    margin-bottom: 14px;
+    white-space: pre;
+    font-size: 0.8rem;
+  }
+
+  /* highlight classes */
+  .hl-field      { background: rgba(0, 200, 255, 0.35); border-radius: 4px; }
+  .hl-constructor{ background: rgba(0, 255, 0, 0.35);   border-radius: 4px; }
+  .hl-static     { background: rgba(255, 165, 0, 0.35); border-radius: 4px; }
+  .hl-this       { background: rgba(255, 0, 255, 0.35); border-radius: 4px; }
+  .hl-new        { background: rgba(255, 0, 0, 0.35);   border-radius: 4px; }
+  .hl-inherit    { background: rgba(155, 89, 182, 0.35);border-radius: 4px; }
+  .hl-exception  { background: rgba(231, 76, 60, 0.35); border-radius: 4px; }
+
+  @keyframes fadeIn {
+    from {opacity: 0; transform: translateY(4px);}
+    to   {opacity: 1; transform: translateY(0);}
+  }
+
+  /* Mobile tweaks */
+  @media (max-width: 600px) {
+    h1 { font-size: 1.2rem; }
+    h2 { font-size: 0.95rem; }
+    .code-block { font-size: 0.78rem; }
+    .chap-tab { font-size: 0.75rem; padding: 5px 8px; }
+    button { font-size: 0.75rem; padding: 5px 8px; }
+    .page { padding: 10px; }
+  }
+</style>
+
+<script>
+function showChapter(chapId) {
+  const sections = document.getElementsByClassName("chapter-section");
+  const tabs = document.getElementsByClassName("chap-tab");
+  for (let s of sections) s.classList.remove("active-chap");
+  for (let t of tabs) t.classList.remove("active");
+  document.getElementById(chapId).classList.add("active-chap");
+  const tabEl = document.querySelector('.chap-tab[data-target="' + chapId + '"]');
+  if (tabEl) tabEl.classList.add("active");
+}
+
+function toggleRole(role, className) {
+  const spans = document.querySelectorAll('[data-role="' + role + '"]');
+  spans.forEach(s => s.classList.toggle(className));
+}
+
+/* Button helpers */
+function toggleFields()      { toggleRole("field", "hl-field"); }
+function toggleConstructors(){ toggleRole("constructor", "hl-constructor"); }
+function toggleStatic()      { toggleRole("static", "hl-static"); }
+function toggleThisKeyword() { toggleRole("this", "hl-this"); }
+function toggleNewKeyword()  { toggleRole("new", "hl-new"); }
+
+function toggleInheritance() {
+  ["extends", "super", "override"].forEach(role => {
+    toggleRole(role, "hl-inherit");
+  });
+}
+
+function toggleExceptions() {
+  ["try", "catch", "throw", "throws"].forEach(role => {
+    toggleRole(role, "hl-exception");
+  });
+}
+
+/* PWA: service worker registration */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+
+window.onload = function() {
+  showChapter('chap9');
+};
+</script>
+</head>
+<body>
+<div class="page">
+  <h1>Java Visualizer – Chapters 9–12</h1>
+  <h2>Objects, Classes, OOP Thinking, Inheritance, Exceptions</h2>
+
+  <!-- Chapter Tabs -->
+  <div id="chapterTabs">
+    <div class="chap-tab active" data-target="chap9"  onclick="showChapter('chap9')">Ch 9 – Objects & Classes</div>
+    <div class="chap-tab"        data-target="chap10" onclick="showChapter('chap10')">Ch 10 – OOP Thinking</div>
+    <div class="chap-tab"        data-target="chap11" onclick="showChapter('chap11')">Ch 11 – Inheritance</div>
+    <div class="chap-tab"        data-target="chap12" onclick="showChapter('chap12')">Ch 12 – Exceptions</div>
+  </div>
+
+  <!-- Highlight Controls (sticky) -->
+  <div id="controlsWrapper">
+    <div id="controls">
+      <button onclick="toggleFields()">Fields</button>
+      <button onclick="toggleConstructors()">Constructors</button>
+      <button onclick="toggleStatic()">static</button>
+      <button onclick="toggleThisKeyword()">this</button>
+      <button onclick="toggleNewKeyword()">new (object creation)</button>
+      <button onclick="toggleInheritance()">extends / super / override</button>
+      <button onclick="toggleExceptions()">try / catch / throw / throws</button>
+    </div>
+    <div class="legend">
+      <span class="field">Fields</span>
+      <span class="ctor">Constructors</span>
+      <span class="stat">static</span>
+      <span class="thisc">this</span>
+      <span class="newc">new</span>
+      <span class="inh">Inheritance</span>
+      <span class="exc">Exceptions</span>
+    </div>
+  </div>
+
+  <!-- ===================== CHAPTER 9 ===================== -->
+  <div class="chapter-section active-chap" id="chap9">
+    <h2>Chapter 9 – Objects and Classes</h2>
+
+    <div class="code-title">CircleWithStaticMembers.java</div>
+    <div class="code-block">
+<span>package chapter09;</span>
+<span></span>
+<span>public class CircleWithStaticMembers {</span>
+<span>  /** The radius of the circle */</span>
+<span>  <span data-role="field">double radius;</span></span>
+<span></span>
+<span>  /** The number of the objects created */</span>
+<span>  <span data-role="static">static</span> <span data-role="field">int numberOfObjects</span> = 0;</span>
+<span></span>
+<span>  /** Construct a circle with radius 1 */</span>
+<span>  <span data-role="constructor">CircleWithStaticMembers()</span> {</span>
+<span>    radius = 1.0;</span>
+<span>    numberOfObjects++;</span>
+<span>  }</span>
+<span></span>
+<span>  /** Construct a circle with a specified radius */</span>
+<span>  <span data-role="constructor">CircleWithStaticMembers(double radius)</span> {</span>
+<span>    <span data-role="this">this</span>.<span data-role="this">radius</span> = radius;</span>
+<span>    numberOfObjects++;</span>
+<span>  }</span>
+<span></span>
+<span>  /** Return numberOfObjects */</span>
+<span>  <span data-role="static">static</span> int getNumberOfObjects() {</span>
+<span>    return numberOfObjects;</span>
+<span>  }</span>
+<span></span>
+<span>  /** Return the area of this circle */</span>
+<span>  double getArea() {</span>
+<span>    return radius * radius * Math.PI;</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+
+    <div class="code-title">TestCircleWithStaticMembers.java</div>
+    <div class="code-block">
+<span>package chapter09;</span>
+<span></span>
+<span>public class TestCircleWithStaticMembers {</span>
+<span>  public static void main(String[] args) {</span>
+<span>    System.out.println("Before creating objects");</span>
+<span>    System.out.println("The number of Circle objects is " +</span>
+<span>      CircleWithStaticMembers.numberOfObjects);</span>
+<span></span>
+<span>    // Create c1</span>
+<span>    CircleWithStaticMembers c1 = <span data-role="new">new CircleWithStaticMembers()</span>;</span>
+<span></span>
+<span>    System.out.println("\nAfter creating c1");</span>
+<span>    System.out.println("c1: radius (" + c1.radius +</span>
+<span>      ") and number of Circle objects (" +</span>
+<span>      c1.numberOfObjects + ")");</span>
+<span></span>
+<span>    // Create c2</span>
+<span>    CircleWithStaticMembers c2 = <span data-role="new">new CircleWithStaticMembers(5)</span>;</span>
+<span></span>
+<span>    // Modify c1</span>
+<span>    c1.radius = 9;</span>
+<span></span>
+<span>    System.out.println("\nAfter creating c2 and modifying c1");</span>
+<span>    System.out.println("c1: radius (" + c1.radius +</span>
+<span>      ") and number of Circle objects (" +</span>
+<span>      c1.numberOfObjects + ")");</span>
+<span>    System.out.println("c2: radius (" + c2.radius +</span>
+<span>      ") and number of Circle objects (" +</span>
+<span>      c2.numberOfObjects + ")");</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+
+    <div class="code-title">SimpleGeometricObject.java</div>
+    <div class="code-block">
+<span>package chapter11; // used in Chapter 9 and 11</span>
+<span></span>
+<span>public class SimpleGeometricObject {</span>
+<span>  <span data-role="field">private String color</span> = "white";</span>
+<span>  <span data-role="field">private boolean filled</span>;</span>
+<span>  <span data-role="field">private java.util.Date dateCreated</span>;</span>
+<span></span>
+<span>  /** Construct a default geometric object */</span>
+<span>  <span data-role="constructor">public SimpleGeometricObject()</span> {</span>
+<span>    dateCreated = new java.util.Date();</span>
+<span>  }</span>
+<span></span>
+<span>  /** Construct a geometric object with the specified color and filled */</span>
+<span>  <span data-role="constructor">public SimpleGeometricObject(String color, boolean filled)</span> {</span>
+<span>    dateCreated = new java.util.Date();</span>
+<span>    this.color = color;</span>
+<span>    this.filled = filled;</span>
+<span>  }</span>
+<span></span>
+<span>  // getters, setters, and toString omitted for brevity</span>
+<span>}</span>
+    </div>
+  </div>
+
+  <!-- ===================== CHAPTER 10 ===================== -->
+  <div class="chapter-section" id="chap10">
+    <h2>Chapter 10 – Object-Oriented Thinking</h2>
+
+    <div class="code-title">Course.java (Aggregation)</div>
+    <div class="code-block">
+<span>package chapter10;</span>
+<span></span>
+<span>public class Course {</span>
+<span>  <span data-role="field">private String courseName</span>;</span>
+<span>  <span data-role="field">private String[] students</span> = new String[100];</span>
+<span>  <span data-role="field">private int numberOfStudents</span>;</span>
+<span></span>
+<span>  <span data-role="constructor">public Course(String courseName)</span> {</span>
+<span>    this.courseName = courseName;</span>
+<span>  }</span>
+<span></span>
+<span>  public void addStudent(String student) {</span>
+<span>    students[numberOfStudents] = student;</span>
+<span>    numberOfStudents++;</span>
+<span>  }</span>
+<span></span>
+<span>  public String[] getStudents() {</span>
+<span>    return students;</span>
+<span>  }</span>
+<span></span>
+<span>  public int getNumberOfStudents() {</span>
+<span>    return numberOfStudents;</span>
+<span>  }</span>
+<span></span>
+<span>  public String getCourseName() {</span>
+<span>    return courseName;</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+
+    <div class="code-title">TestCourse.java</div>
+    <div class="code-block">
+<span>package chapter10;</span>
+<span></span>
+<span>public class TestCourse {</span>
+<span>  public static void main(String[] args) {</span>
+<span>    Course course1 = <span data-role="new">new Course("Data Structures")</span>;</span>
+<span>    course1.addStudent("Peter");</span>
+<span>    course1.addStudent("Kim");</span>
+<span></span>
+<span>    System.out.println("Number of students in " +</span>
+<span>      course1.getCourseName() + ": " + course1.getNumberOfStudents());</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+
+    <div class="code-title">StackOfIntegers.java</div>
+    <div class="code-block">
+<span>package chapter10;</span>
+<span></span>
+<span>public class StackOfIntegers {</span>
+<span>  <span data-role="field">private int[] elements</span>;</span>
+<span>  <span data-role="field">private int size</span>;</span>
+<span>  <span data-role="static">public static final int DEFAULT_CAPACITY</span> = 16;</span>
+<span></span>
+<span>  <span data-role="constructor">public StackOfIntegers()</span> {</span>
+<span>    this(DEFAULT_CAPACITY);</span>
+<span>  }</span>
+<span></span>
+<span>  <span data-role="constructor">public StackOfIntegers(int capacity)</span> {</span>
+<span>    elements = <span data-role="new">new int[capacity]</span>;</span>
+<span>  }</span>
+<span></span>
+<span>  public void push(int value) {</span>
+<span>    if (size >= elements.length) {</span>
+<span>      // resize logic omitted</span>
+<span>    }</span>
+<span>    elements[size++] = value;</span>
+<span>  }</span>
+<span></span>
+<span>  public int pop() {</span>
+<span>    return elements[--size];</span>
+<span>  }</span>
+<span></span>
+<span>  public boolean empty() {</span>
+<span>    return size == 0;</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+  </div>
+
+  <!-- ===================== CHAPTER 11 ===================== -->
+  <div class="chapter-section" id="chap11">
+    <h2>Chapter 11 – Inheritance</h2>
+
+    <div class="code-title">SimpleGeometricObject.java (Base Class)</div>
+    <div class="code-block">
+<span>package chapter11;</span>
+<span></span>
+<span>public class SimpleGeometricObject {</span>
+<span>  <span data-role="field">private String color</span> = "white";</span>
+<span>  <span data-role="field">private boolean filled</span>;</span>
+<span>  <span data-role="field">private java.util.Date dateCreated</span>;</span>
+<span></span>
+<span>  <span data-role="constructor">public SimpleGeometricObject()</span> {</span>
+<span>    dateCreated = new java.util.Date();</span>
+<span>  }</span>
+<span></span>
+<span>  <span data-role="constructor">public SimpleGeometricObject(String color, boolean filled)</span> {</span>
+<span>    dateCreated = new java.util.Date();</span>
+<span>    this.color = color;</span>
+<span>    this.filled = filled;</span>
+<span>  }</span>
+<span></span>
+<span>  // getters, setters, and toString omitted for brevity</span>
+<span>}</span>
+    </div>
+
+    <div class="code-title">CircleFromSimpleGeometricObject.java</div>
+    <div class="code-block">
+<span>package chapter11;</span>
+<span></span>
+<span>public class CircleFromSimpleGeometricObject <span data-role="extends">extends</span> SimpleGeometricObject {</span>
+<span>  <span data-role="field">private double radius</span>;</span>
+<span></span>
+<span>  <span data-role="constructor">public CircleFromSimpleGeometricObject()</span> {</span>
+<span>  }</span>
+<span></span>
+<span>  <span data-role="constructor">public CircleFromSimpleGeometricObject(double radius)</span> {</span>
+<span>    this.radius = radius;</span>
+<span>  }</span>
+<span></span>
+<span>  <span data-role="constructor">public CircleFromSimpleGeometricObject(double radius, String color, boolean filled)</span> {</span>
+<span>    <span data-role="super">super</span>(color, filled);</span>
+<span>    this.radius = radius;</span>
+<span>  }</span>
+<span></span>
+<span>  public double getRadius() {</span>
+<span>    return radius;</span>
+<span>  }</span>
+<span></span>
+<span>  public double getArea() {</span>
+<span>    return radius * radius * Math.PI;</span>
+<span>  }</span>
+<span></span>
+<span>  public double getDiameter() {</span>
+<span>    return 2 * radius;</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+
+    <div class="code-title">RectangleFromSimpleGeometricObject.java</div>
+    <div class="code-block">
+<span>package chapter11;</span>
+<span></span>
+<span>public class RectangleFromSimpleGeometricObject <span data-role="extends">extends</span> SimpleGeometricObject {</span>
+<span>  <span data-role="field">private double width</span>;</span>
+<span>  <span data-role="field">private double height</span>;</span>
+<span></span>
+<span>  <span data-role="constructor">public RectangleFromSimpleGeometricObject()</span> {</span>
+<span>  }</span>
+<span></span>
+<span>  <span data-role="constructor">public RectangleFromSimpleGeometricObject(double width, double height)</span> {</span>
+<span>    this.width = width;</span>
+<span>    this.height = height;</span>
+<span>  }</span>
+<span></span>
+<span>  public double getArea() {</span>
+<span>    return width * height;</span>
+<span>  }</span>
+<span></span>
+<span>  public double getPerimeter() {</span>
+<span>    return 2 * (width + height);</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+
+    <div class="code-title">TestCircleRectangle.java</div>
+    <div class="code-block">
+<span>package chapter11;</span>
+<span></span>
+<span>public class TestCircleRectangle {</span>
+<span>  public static void main(String[] args) {</span>
+<span>    CircleFromSimpleGeometricObject circle =</span>
+<span>      <span data-role="new">new CircleFromSimpleGeometricObject(1)</span>;</span>
+<span>    System.out.println("A circle " + circle.toString());</span>
+<span>    System.out.println("The radius is " + circle.getRadius());</span>
+<span>    System.out.println("The area is " + circle.getArea());</span>
+<span>    System.out.println("The diameter is " + circle.getDiameter());</span>
+<span></span>
+<span>    RectangleFromSimpleGeometricObject rectangle =</span>
+<span>      <span data-role="new">new RectangleFromSimpleGeometricObject(2, 4)</span>;</span>
+<span>    System.out.println("\nA rectangle " + rectangle.toString());</span>
+<span>    System.out.println("The area is " + rectangle.getArea());</span>
+<span>    System.out.println("The perimeter is " + rectangle.getPerimeter());</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+  </div>
+
+  <!-- ===================== CHAPTER 12 ===================== -->
+  <div class="chapter-section" id="chap12">
+    <h2>Chapter 12 – Exception Handling</h2>
+
+    <div class="code-title">QuotientWithException.java</div>
+    <div class="code-block">
+<span>package chapter12;</span>
+<span></span>
+<span>import java.util.Scanner;</span>
+<span></span>
+<span>public class QuotientWithException {</span>
+<span>  public static void main(String[] args) {</span>
+<span>    Scanner input = new Scanner(System.in);</span>
+<span>    System.out.print("Enter two integers: ");</span>
+<span>    int number1 = input.nextInt();</span>
+<span>    int number2 = input.nextInt();</span>
+<span></span>
+<span>    try { <span data-role="try">// try block</span></span>
+<span>      if (number2 == 0)</span>
+<span>        <span data-role="throw">throw</span> new ArithmeticException("Divisor cannot be zero");</span>
+<span></span>
+<span>      int result = number1 / number2;</span>
+<span>      System.out.println(number1 + " / " + number2 + " is " + result);</span>
+<span>    }</span>
+<span>    <span data-role="catch">catch</span> (ArithmeticException ex) {</span>
+<span>      System.out.println("Exception: " + ex.getMessage());</span>
+<span>    }</span>
+<span></span>
+<span>    System.out.println("Execution continues after the catch block.");</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+
+    <div class="code-title">Custom Exception Example</div>
+    <div class="code-block">
+<span>package chapter12;</span>
+<span></span>
+<span>class InvalidRadiusException <span data-role="extends">extends</span> Exception {</span>
+<span>  <span data-role="constructor">public InvalidRadiusException(String message)</span> {</span>
+<span>    super(message);</span>
+<span>  }</span>
+<span>}</span>
+<span></span>
+<span>class CircleWithCustomException {</span>
+<span>  <span data-role="field">private double radius</span>;</span>
+<span></span>
+<span>  <span data-role="constructor">public CircleWithCustomException(double radius)</span></span>
+<span>      <span data-role="throws">throws</span> InvalidRadiusException {</span>
+<span>    setRadius(radius);</span>
+<span>  }</span>
+<span></span>
+<span>  public void setRadius(double radius)</span>
+<span>      <span data-role="throws">throws</span> InvalidRadiusException {</span>
+<span>    if (radius &lt; 0)</span>
+<span>      <span data-role="throw">throw</span> new InvalidRadiusException("Radius cannot be negative");</span>
+<span>    this.radius = radius;</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+
+    <div class="code-title">TestCircleWithCustomException.java</div>
+    <div class="code-block">
+<span>package chapter12;</span>
+<span></span>
+<span>public class TestCircleWithCustomException {</span>
+<span>  public static void main(String[] args) {</span>
+<span>    try { <span data-role="try">// try block</span></span>
+<span>      CircleWithCustomException c =</span>
+<span>        <span data-role="new">new CircleWithCustomException(-5)</span>;</span>
+<span>      System.out.println("Circle created.");</span>
+<span>    }</span>
+<span>    <span data-role="catch">catch</span> (InvalidRadiusException ex) {</span>
+<span>      System.out.println("Error: " + ex.getMessage());</span>
+<span>    }</span>
+<span>  }</span>
+<span>}</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
