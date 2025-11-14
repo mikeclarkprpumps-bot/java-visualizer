@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Java Visualizer – Chapters 9–12</title>
+<title>Java Visualizer – Chapters 9–12 + Code Analyzer</title>
 
 <!-- Mobile friendly -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -282,6 +282,52 @@
       max-width: none;
     }
   }
+
+  /* Analyzer tab styles */
+  .analyzer-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .analyzer-input {
+    width: 100%;
+    min-height: 260px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.8rem;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #bbb;
+    resize: vertical;
+  }
+
+  .analyzer-summary {
+    font-size: 0.8rem;
+    margin: 6px 0;
+  }
+
+  .analyzer-section-title {
+    font-weight: 600;
+    margin-top: 6px;
+    margin-bottom: 2px;
+  }
+
+  .analyzer-list {
+    font-size: 0.78rem;
+    padding-left: 18px;
+    margin-top: 0;
+  }
+
+  .analyzer-list li {
+    margin-bottom: 3px;
+  }
+
+  @media (max-width: 800px) {
+    .analyzer-layout {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 
 <script>
@@ -396,7 +442,6 @@ function showExplanation(key, anchorRect) {
     textEl.textContent = "Explanation coming soon for this line.";
   }
 
-  // Make panel visible but hidden to measure
   panel.style.display = "block";
   panel.style.visibility = "hidden";
 
@@ -409,13 +454,11 @@ function showExplanation(key, anchorRect) {
   const viewportHeight = window.innerHeight;
 
   const margin = 8;
-  const offset = 4; // small gap below the line
+  const offset = 4;
 
-  // Anchor rect from viewport -> page coords
-  let top = anchorRect.bottom + scrollY + offset; // A2: below the line
+  let top = anchorRect.bottom + scrollY + offset;
   let left = anchorRect.left + scrollX;
 
-  // If going off right edge, shift left
   if (left + panelWidth + margin > scrollX + viewportWidth) {
     left = scrollX + viewportWidth - panelWidth - margin;
   }
@@ -423,11 +466,9 @@ function showExplanation(key, anchorRect) {
     left = scrollX + margin;
   }
 
-  // If going off bottom edge, move above the line instead
   if (top + panelHeight + margin > scrollY + viewportHeight) {
     top = anchorRect.top + scrollY - panelHeight - offset;
   }
-  // If still off top (very high), clamp
   if (top < scrollY + margin) {
     top = scrollY + margin;
   }
@@ -804,18 +845,16 @@ function loadCh9Example(key) {
   const analysisEl = document.getElementById("ex9Analysis");
 
   titleEl.textContent = ex.title;
-  codeEl.innerHTML = ex.code;  // use innerHTML so spans + data-role + data-explain render
+  codeEl.innerHTML = ex.code;
   stepsEl.innerHTML = "";
   consoleEl.textContent = "";
   analysisEl.innerHTML = "";
 
-  // update button active state
   const btns = document.querySelectorAll(".ex9-btn");
   btns.forEach(b => b.classList.remove("active"));
   const activeBtn = document.querySelector('.ex9-btn[data-exkey="' + key + '"]');
   if (activeBtn) activeBtn.classList.add("active");
 
-  // populate full code analysis
   if (ex.analysis && Array.isArray(ex.analysis)) {
     ex.analysis.forEach(item => {
       const li = document.createElement("li");
@@ -837,6 +876,179 @@ function runCh9Example() {
     stepsEl.appendChild(li);
   });
   consoleEl.textContent = ex.console;
+}
+
+/* ====== CODE ANALYZER (pasted code) ====== */
+function analyzePastedCode() {
+  const src = document.getElementById("analyzeInput").value || "";
+  const lines = src.split(/\r?\n/);
+
+  const classes = [];
+  const interfaces = [];
+  const fields = [];
+  const constructors = [];
+  const methods = [];
+  const staticMembers = [];
+  const news = [];
+  const thisRefs = [];
+  const superRefs = [];
+  const inheritanceInfo = [];
+  const exceptions = [];
+
+  let currentClass = null;
+
+  const stripComments = (line) => line.replace(/\/\/.*$/, "").replace(/\/\*.*\*\//g, "");
+
+  lines.forEach((rawLine, idx) => {
+    const lineNo = idx + 1;
+    let line = stripComments(rawLine).trim();
+    if (!line) return;
+
+    // class / interface
+    let m;
+    if ((m = line.match(/\bclass\s+([A-Za-z_]\w*)/))) {
+      const name = m[1];
+      currentClass = name;
+      let extendsMatch = line.match(/\bextends\s+([A-Za-z_]\w*)/);
+      let implementsMatch = line.match(/\bimplements\s+([A-Za-z_][\w,\s]*)/);
+      let info = `class ${name}`;
+      if (extendsMatch) info += ` extends ${extendsMatch[1]}`;
+      if (implementsMatch) info += ` implements ${implementsMatch[1].trim()}`;
+      classes.push(`${info}  (line ${lineNo})`);
+      if (extendsMatch || implementsMatch) {
+        inheritanceInfo.push(`${info}  (line ${lineNo})`);
+      }
+      return;
+    }
+
+    if ((m = line.match(/\binterface\s+([A-Za-z_]\w*)/))) {
+      interfaces.push(`interface ${m[1]}  (line ${lineNo})`);
+      return;
+    }
+
+    // 'new' expressions
+    if (line.includes(" new ")) {
+      news.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+    }
+
+    // 'this' and 'super'
+    if (line.includes("this.")) {
+      thisRefs.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+    }
+    if (line.includes("super") && !line.includes("super(") == false) {
+      superRefs.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+    }
+
+    // inheritance keywords in non-class lines
+    if (/\bextends\b|\bimplements\b/.test(line)) {
+      inheritanceInfo.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+    }
+
+    // exceptions
+    if (/\btry\b/.test(line) || /\bcatch\b/.test(line) ||
+        /\bthrow\b/.test(line) || /\bthrows\b/.test(line)) {
+      exceptions.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+    }
+
+    // skip obvious control-flow statements from method detection
+    const controlKeywords = ["if ", "for ", "while ", "switch ", "catch ", "try ", "do "];
+    const isControl = controlKeywords.some(kw => line.startsWith(kw) || line.startsWith(kw.trim() + "("));
+
+    // methods / constructors heuristic
+    if (!isControl && /\w+\s*\(.*\)\s*[{;]?$/.test(line)) {
+      // break on '(' to find method name
+      const sig = line.replace(/{.*$/, "").trim();
+      const parts = sig.split(/\s+/);
+      const parenIndex = sig.indexOf("(");
+      const beforeParen = sig.substring(0, parenIndex).trim();
+      const nameMatch = beforeParen.match(/([A-Za-z_]\w*)$/);
+      const name = nameMatch ? nameMatch[1] : null;
+
+      if (name) {
+        // constructor if name == currentClass
+        if (currentClass && name === currentClass) {
+          constructors.push(`Constructor: ${sig}  (line ${lineNo})`);
+        } else {
+          // find return type (very heuristic)
+          let returnType = "unknown";
+          if (parts.length >= 2) {
+            returnType = parts[parts.length - 2];
+          }
+          methods.push(`Method: ${name}  → returns ${returnType}  (line ${lineNo})`);
+        }
+
+        if (sig.includes(" static ")) {
+          staticMembers.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+        }
+      }
+      return;
+    }
+
+    // fields (very rough): has ';', not '(', not 'class', not 'interface'
+    if (line.endsWith(";") && !line.includes("(") && !line.includes(")") &&
+        !line.includes(" class ") && !line.startsWith("class ") &&
+        !line.includes(" interface ") && !line.startsWith("interface ")) {
+      // ignore import/package
+      if (line.startsWith("import ") || line.startsWith("package ")) return;
+      let isStatic = /\bstatic\b/.test(line);
+      let isFinal  = /\bfinal\b/.test(line);
+      let fieldInfo = line.replace(/;/, "").trim();
+      fields.push(`${fieldInfo}  (line ${lineNo})`);
+      if (isStatic) staticMembers.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+      return;
+    }
+  });
+
+  // Populate UI
+  const summaryEl = document.getElementById("analyzeSummary");
+  const outClasses = document.getElementById("analyzeClasses");
+  const outInterfaces = document.getElementById("analyzeInterfaces");
+  const outFields = document.getElementById("analyzeFields");
+  const outCtors = document.getElementById("analyzeConstructors");
+  const outMethods = document.getElementById("analyzeMethods");
+  const outStatic = document.getElementById("analyzeStatic");
+  const outNew = document.getElementById("analyzeNew");
+  const outThis = document.getElementById("analyzeThis");
+  const outSuper = document.getElementById("analyzeSuper");
+  const outInherit = document.getElementById("analyzeInherit");
+  const outExc = document.getElementById("analyzeExceptions");
+
+  function fillList(listEl, arr) {
+    listEl.innerHTML = "";
+    if (!arr.length) {
+      const li = document.createElement("li");
+      li.textContent = "(none detected)";
+      listEl.appendChild(li);
+    } else {
+      arr.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        listEl.appendChild(li);
+      });
+    }
+  }
+
+  const totalClasses = classes.length;
+  const totalInterfaces = interfaces.length;
+  const totalFields = fields.length;
+  const totalMethods = methods.length;
+  const totalCtors = constructors.length;
+
+  summaryEl.textContent =
+    `Detected ${totalClasses} class(es), ${totalInterfaces} interface(s), `
+    + `${totalFields} field(s), ${totalCtors} constructor(s), ${totalMethods} method(s).`;
+
+  fillList(outClasses, classes);
+  fillList(outInterfaces, interfaces);
+  fillList(outFields, fields);
+  fillList(outCtors, constructors);
+  fillList(outMethods, methods);
+  fillList(outStatic, staticMembers);
+  fillList(outNew, news);
+  fillList(outThis, thisRefs);
+  fillList(outSuper, superRefs);
+  fillList(outInherit, inheritanceInfo);
+  fillList(outExc, exceptions);
 }
 
 /* ====== PWA: service worker registration ====== */
@@ -864,6 +1076,7 @@ window.onload = function() {
     <div class="chap-tab"        data-target="chap10" onclick="showChapter('chap10')">Ch 10 – OOP Thinking</div>
     <div class="chap-tab"        data-target="chap11" onclick="showChapter('chap11')">Ch 11 – Inheritance</div>
     <div class="chap-tab"        data-target="chap12" onclick="showChapter('chap12')">Ch 12 – Exceptions</div>
+    <div class="chap-tab"        data-target="analyzer" onclick="showChapter('analyzer')">Code Analyzer</div>
   </div>
 
   <!-- Highlight Controls -->
@@ -1211,9 +1424,73 @@ public class TestCircleWithCustomException {
     </div>
   </div>
 
+  <!-- ===================== CODE ANALYZER ===================== -->
+  <div class="chapter-section" id="analyzer">
+    <h2>Code Analyzer – Paste Any Java Snippet</h2>
+
+    <div class="analyzer-layout">
+      <!-- Left: input -->
+      <div>
+        <div class="ex-panel">
+          <h3>1. Paste your Java code here</h3>
+          <textarea id="analyzeInput" class="analyzer-input"
+            placeholder="Paste any Java class, method, or snippet here…
+For example:
+public class Demo {
+  private int count;
+  public Demo(int count) { this.count = count; }
+  public void show() { System.out.println(count); }
+}"></textarea>
+          <button style="margin-top:8px;" onclick="analyzePastedCode()">▶ Analyze Code</button>
+        </div>
+      </div>
+
+      <!-- Right: analysis -->
+      <div class="ex-panel">
+        <h3>2. Structured breakdown</h3>
+        <div id="analyzeSummary" class="analyzer-summary">
+          (Nothing analyzed yet. Paste code and click “Analyze Code”.)
+        </div>
+
+        <div class="analyzer-section-title">Classes</div>
+        <ul id="analyzeClasses" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">Interfaces</div>
+        <ul id="analyzeInterfaces" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">Fields (instance or static)</div>
+        <ul id="analyzeFields" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">Constructors</div>
+        <ul id="analyzeConstructors" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">Methods</div>
+        <ul id="analyzeMethods" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">Static members (fields or methods)</div>
+        <ul id="analyzeStatic" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">Object creation (new)</div>
+        <ul id="analyzeNew" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">this references</div>
+        <ul id="analyzeThis" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">super / inheritance references</div>
+        <ul id="analyzeSuper" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">extends / implements usage</div>
+        <ul id="analyzeInherit" class="analyzer-list"></ul>
+
+        <div class="analyzer-section-title">Exceptions (try / catch / throw / throws)</div>
+        <ul id="analyzeExceptions" class="analyzer-list"></ul>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<!-- Explain-this-line floating panel (positioned near clicked line) -->
+<!-- Explain-this-line floating panel -->
 <div id="explainPanel">
   <div id="explainHeader">
     <span id="explainTitle">Explanation</span>
