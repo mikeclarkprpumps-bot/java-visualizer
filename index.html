@@ -218,6 +218,46 @@
     margin-bottom: 6px;
   }
 
+  /* Explain-this-line styling */
+  .explainable {
+    border-bottom: 1px dotted #ffd700;
+    cursor: pointer;
+  }
+
+  #explainPanel {
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    max-width: 340px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    font-size: 0.8rem;
+    padding: 8px 10px;
+    z-index: 20;
+    display: none;
+  }
+
+  #explainHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  #explainClose {
+    border: none;
+    background: transparent;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 2px 6px;
+  }
+
+  #explainText {
+    line-height: 1.3;
+  }
+
   @media (max-width: 800px) {
     .ex9-layout {
       grid-template-columns: 1fr;
@@ -231,6 +271,12 @@
     .chap-tab { font-size: 0.75rem; padding: 5px 8px; }
     button { font-size: 0.75rem; padding: 5px 8px; }
     .page { padding: 10px; }
+    #explainPanel {
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      max-width: none;
+    }
   }
 </style>
 
@@ -268,20 +314,118 @@ function toggleExceptions() {
   });
 }
 
-/* ====== CHAPTER 9 EXAMPLE DATA (with spans & data-role) ====== */
+/* ====== EXPLAIN-THIS-LINE MAP ====== */
+const explainMap = {
+  // Chapter 9 – SimpleCircle
+  "ch9_simple_radiusField": {
+    title: "Field: radius",
+    text: "This declares an instance field. Each SimpleCircle object has its own copy of radius, which stores the circle’s size."
+  },
+  "ch9_simple_ctor_noarg": {
+    title: "No-arg constructor",
+    text: "This constructor creates a SimpleCircle with a default radius of 1. It runs automatically when you call new SimpleCircle()."
+  },
+  "ch9_simple_ctor_param": {
+    title: "Constructor with parameter",
+    text: "This constructor lets you create a circle with any radius. The parameter newRadius is copied into the object’s radius field."
+  },
+
+  // Chapter 9 – Static circle
+  "ch9_static_numberOfObjects": {
+    title: "Static field: numberOfObjects",
+    text: "numberOfObjects is static, so it belongs to the class, not to a single object. All CircleWithStaticMembers objects share this counter."
+  },
+  "ch9_static_getNumber": {
+    title: "Static method: getNumberOfObjects",
+    text: "Because the method is static, it can be called as CircleWithStaticMembers.getNumberOfObjects() without creating an object."
+  },
+
+  // Chapter 9 – Pass object
+  "ch9_pass_param_c": {
+    title: "Parameter c refers to the same object",
+    text: "The parameter c is a reference to the SAME Circle object passed in. Changes to c.radius affect the original object in main."
+  },
+
+  // Chapter 9 – TV
+  "ch9_tv_field_on": {
+    title: "Field: power state",
+    text: "The on field tracks whether the TV is powered on. Most methods check this before changing channel or volume."
+  },
+
+  // Chapter 11 – inheritance
+  "ch11_circle_extends": {
+    title: "extends SimpleGeometricObject",
+    text: "This line makes CircleFromSimpleGeometricObject a child class (subclass) of SimpleGeometricObject, inheriting its fields and methods."
+  },
+  "ch11_circle_super_ctor": {
+    title: "Calling super(color, filled)",
+    text: "super(color, filled) calls the parent class constructor so it can initialize inherited fields like color and filled."
+  },
+
+  // Chapter 12 – exceptions
+  "ch12_try": {
+    title: "try block",
+    text: "Code that might throw an exception is placed inside the try block. If an exception occurs, control jumps to the matching catch."
+  },
+  "ch12_throw_zero": {
+    title: "Throwing an exception",
+    text: "This explicitly throws an ArithmeticException if number2 is zero. The catch block below will handle this error."
+  },
+  "ch12_catch": {
+    title: "catch (ArithmeticException ex)",
+    text: "If an ArithmeticException is thrown in the try block, this catch block runs and handles the error instead of crashing the program."
+  }
+};
+
+function showExplanation(key) {
+  const panel = document.getElementById("explainPanel");
+  const titleEl = document.getElementById("explainTitle");
+  const textEl = document.getElementById("explainText");
+
+  const info = explainMap[key];
+  if (info) {
+    titleEl.textContent = info.title;
+    textEl.textContent = info.text;
+  } else {
+    titleEl.textContent = "Explanation";
+    textEl.textContent = "Explanation coming soon for this line.";
+  }
+  panel.style.display = "block";
+}
+
+function closeExplainPanel() {
+  document.getElementById("explainPanel").style.display = "none";
+}
+
+/* Global click handler for explainable spans */
+document.addEventListener("click", function(e) {
+  const el = e.target.closest("[data-explain]");
+  if (el) {
+    const key = el.getAttribute("data-explain");
+    showExplanation(key);
+  }
+});
+
+/* ====== CHAPTER 9 EXAMPLE DATA (with spans & data-role + data-explain) ====== */
 const ch9Examples = {
   simpleCircle: {
     title: "SimpleCircle – basic objects and methods",
     code: 
 `// SimpleCircle.java
 public class SimpleCircle {
-  <span data-role="field">double radius;</span>
+  <span data-role="field"
+        data-explain="ch9_simple_radiusField"
+        class="explainable">double radius;</span>
 
-  <span data-role="constructor">SimpleCircle()</span> {
+  <span data-role="constructor"
+        data-explain="ch9_simple_ctor_noarg"
+        class="explainable">SimpleCircle()</span> {
     radius = 1;
   }
 
-  <span data-role="constructor">SimpleCircle(double newRadius)</span> {
+  <span data-role="constructor"
+        data-explain="ch9_simple_ctor_param"
+        class="explainable">SimpleCircle(double newRadius)</span> {
     <span data-role="this">radius</span> = newRadius;
   }
 
@@ -323,7 +467,9 @@ c2 radius = 5.0 area = 78.53981633974483`
 `// CircleWithStaticMembers.java
 public class CircleWithStaticMembers {
   <span data-role="field">double radius;</span>
-  <span data-role="static">static int numberOfObjects = 0;</span>
+  <span data-role="static"
+        data-explain="ch9_static_numberOfObjects"
+        class="explainable">static int numberOfObjects = 0;</span>
 
   <span data-role="constructor">CircleWithStaticMembers()</span> {
     radius = 1.0;
@@ -335,7 +481,9 @@ public class CircleWithStaticMembers {
     numberOfObjects++;
   }
 
-  <span data-role="static">static int getNumberOfObjects()</span> {
+  <span data-role="static"
+        data-explain="ch9_static_getNumber"
+        class="explainable">static int getNumberOfObjects()</span> {
     return numberOfObjects;
   }
 
@@ -413,7 +561,9 @@ public class TestPassObject {
       myCircle.radius);
   }
 
-  public static void printAreas(Circle c, int times) {
+  public static void printAreas(
+      <span data-explain="ch9_pass_param_c" class="explainable">Circle c</span>,
+      int times) {
     System.out.println("Radius    \\tArea");
     while (times >= 1) {
       System.out.println(c.radius + "    \\t" + c.getArea());
@@ -448,7 +598,9 @@ After call, radius is 6.0`
 public class TV {
   <span data-role="field">int channel = 1;</span>
   <span data-role="field">int volumeLevel = 1;</span>
-  <span data-role="field">boolean on = false;</span>
+  <span data-role="field"
+        data-explain="ch9_tv_field_on"
+        class="explainable">boolean on = false;</span>
 
   <span data-role="constructor">public TV()</span> {
   }
@@ -538,7 +690,7 @@ function loadCh9Example(key) {
   const consoleEl = document.getElementById("ex9Console");
 
   titleEl.textContent = ex.title;
-  codeEl.innerHTML = ex.code;  // IMPORTANT: innerHTML so spans + data-role are used
+  codeEl.innerHTML = ex.code;  // use innerHTML so spans + data-role + data-explain render
   stepsEl.innerHTML = "";
   consoleEl.textContent = "";
 
@@ -762,7 +914,10 @@ public class SimpleGeometricObject {
     <div class="code-block">
 package chapter11;
 
-public class CircleFromSimpleGeometricObject <span data-role="extends">extends</span> SimpleGeometricObject {
+public class CircleFromSimpleGeometricObject
+  <span data-role="extends"
+        data-explain="ch11_circle_extends"
+        class="explainable">extends SimpleGeometricObject</span> {
   <span data-role="field">private double radius;</span>
 
   <span data-role="constructor">public CircleFromSimpleGeometricObject()</span> {
@@ -773,7 +928,9 @@ public class CircleFromSimpleGeometricObject <span data-role="extends">extends</
   }
 
   <span data-role="constructor">public CircleFromSimpleGeometricObject(double radius, String color, boolean filled)</span> {
-    <span data-role="super">super</span>(color, filled);
+    <span data-role="super"
+          data-explain="ch11_circle_super_ctor"
+          class="explainable">super(color, filled)</span>;
     <span data-role="this">this.radius</span> = radius;
   }
 
@@ -795,7 +952,8 @@ public class CircleFromSimpleGeometricObject <span data-role="extends">extends</
     <div class="code-block">
 package chapter11;
 
-public class RectangleFromSimpleGeometricObject <span data-role="extends">extends</span> SimpleGeometricObject {
+public class RectangleFromSimpleGeometricObject
+  <span data-role="extends">extends SimpleGeometricObject</span> {
   <span data-role="field">private double width;</span>
   <span data-role="field">private double height;</span>
 
@@ -858,14 +1016,20 @@ public class QuotientWithException {
     int number1 = input.nextInt();
     int number2 = input.nextInt();
 
-    <span data-role="try">try</span> { // try block
+    <span data-role="try"
+          data-explain="ch12_try"
+          class="explainable">try</span> { // try block
       if (number2 == 0)
-        <span data-role="throw">throw</span> new ArithmeticException("Divisor cannot be zero");
+        <span data-role="throw"
+              data-explain="ch12_throw_zero"
+              class="explainable">throw new ArithmeticException("Divisor cannot be zero")</span>;
 
       int result = number1 / number2;
       System.out.println(number1 + " / " + number2 + " is " + result);
     }
-    <span data-role="catch">catch</span> (ArithmeticException ex) {
+    <span data-role="catch"
+          data-explain="ch12_catch"
+          class="explainable">catch (ArithmeticException ex)</span> {
       System.out.println("Exception: " + ex.getMessage());
     }
 
@@ -878,9 +1042,9 @@ public class QuotientWithException {
     <div class="code-block">
 package chapter12;
 
-class InvalidRadiusException <span data-role="extends">extends</span> Exception {
+class InvalidRadiusException <span data-role="extends">extends Exception</span> {
   <span data-role="constructor">public InvalidRadiusException(String message)</span> {
-    <span data-role="super">super</span>(message);
+    <span data-role="super">super(message)</span>;
   }
 }
 
@@ -888,14 +1052,14 @@ class CircleWithCustomException {
   <span data-role="field">private double radius;</span>
 
   <span data-role="constructor">public CircleWithCustomException(double radius)</span>
-      <span data-role="throws">throws</span> InvalidRadiusException {
+      <span data-role="throws">throws InvalidRadiusException</span> {
     setRadius(radius);
   }
 
   public void setRadius(double radius)
-      <span data-role="throws">throws</span> InvalidRadiusException {
+      <span data-role="throws">throws InvalidRadiusException</span> {
     if (radius &lt; 0)
-      <span data-role="throw">throw</span> new InvalidRadiusException("Radius cannot be negative");
+      <span data-role="throw">throw new InvalidRadiusException("Radius cannot be negative")</span>;
     <span data-role="this">this.radius</span> = radius;
   }
 }
@@ -912,7 +1076,7 @@ public class TestCircleWithCustomException {
         <span data-role="new">new CircleWithCustomException(-5)</span>;
       System.out.println("Circle created.");
     }
-    <span data-role="catch">catch</span> (InvalidRadiusException ex) {
+    <span data-role="catch">catch (InvalidRadiusException ex)</span> {
       System.out.println("Error: " + ex.getMessage());
     }
   }
@@ -921,5 +1085,15 @@ public class TestCircleWithCustomException {
   </div>
 
 </div>
+
+<!-- Explain-this-line floating panel -->
+<div id="explainPanel">
+  <div id="explainHeader">
+    <span id="explainTitle">Explanation</span>
+    <button id="explainClose" onclick="closeExplainPanel()">×</button>
+  </div>
+  <div id="explainText">Click any underlined code to see what it does.</div>
+</div>
+
 </body>
 </html>
