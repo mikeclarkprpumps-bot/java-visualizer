@@ -16,6 +16,7 @@
     --bg: #f3f4f9;
     --accent: #4e6cff;
     --code-bg: #1e1e1e;
+    --console-bg: #000;
   }
 
   body {
@@ -69,7 +70,7 @@
     transform: translateY(-1px);
   }
 
-  /* Highlight controls (sticky on mobile) */
+  /* Highlight controls (global, sticky) */
   #controlsWrapper {
     position: sticky;
     top: 0;
@@ -119,7 +120,6 @@
   .inh   { background: rgba(155, 89, 182, 0.35); }
   .exc   { background: rgba(231, 76, 60, 0.35); }
 
-  /* Chapters */
   .chapter-section {
     display: none;
     animation: fadeIn 0.25s ease-in;
@@ -146,6 +146,17 @@
     font-size: 0.8rem;
   }
 
+  .console-block {
+    background: var(--console-bg);
+    color: #00ff7f;
+    padding: 10px;
+    border-radius: 8px;
+    white-space: pre;
+    font-size: 0.78rem;
+    min-height: 80px;
+    overflow-x: auto;
+  }
+
   /* highlight classes */
   .hl-field      { background: rgba(0, 200, 255, 0.35); border-radius: 4px; }
   .hl-constructor{ background: rgba(0, 255, 0, 0.35);   border-radius: 4px; }
@@ -160,7 +171,59 @@
     to   {opacity: 1; transform: translateY(0);}
   }
 
-  /* Mobile tweaks */
+  /* Chapter 9 example picker layout */
+  .ex9-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .ex9-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  .ex9-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .ex-panel {
+    background: rgba(255,255,255,0.9);
+    border-radius: 10px;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+  }
+
+  .ex-panel h3 {
+    margin: 4px 0 6px;
+    font-size: 0.9rem;
+  }
+
+  .ex-steps {
+    font-size: 0.78rem;
+    padding-left: 18px;
+  }
+
+  .ex-steps li {
+    margin-bottom: 4px;
+  }
+
+  .run-btn {
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
+
+  @media (max-width: 800px) {
+    .ex9-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
   @media (max-width: 600px) {
     h1 { font-size: 1.2rem; }
     h2 { font-size: 0.95rem; }
@@ -172,6 +235,7 @@
 </style>
 
 <script>
+/* ====== GLOBAL TAB SWITCHING ====== */
 function showChapter(chapId) {
   const sections = document.getElementsByClassName("chapter-section");
   const tabs = document.getElementsByClassName("chap-tab");
@@ -182,31 +246,324 @@ function showChapter(chapId) {
   if (tabEl) tabEl.classList.add("active");
 }
 
+/* ====== HIGHLIGHT TOGGLE HELPERS ====== */
 function toggleRole(role, className) {
   const spans = document.querySelectorAll('[data-role="' + role + '"]');
   spans.forEach(s => s.classList.toggle(className));
 }
 
-/* Button helpers */
 function toggleFields()      { toggleRole("field", "hl-field"); }
 function toggleConstructors(){ toggleRole("constructor", "hl-constructor"); }
 function toggleStatic()      { toggleRole("static", "hl-static"); }
 function toggleThisKeyword() { toggleRole("this", "hl-this"); }
 function toggleNewKeyword()  { toggleRole("new", "hl-new"); }
-
 function toggleInheritance() {
   ["extends", "super", "override"].forEach(role => {
     toggleRole(role, "hl-inherit");
   });
 }
-
 function toggleExceptions() {
   ["try", "catch", "throw", "throws"].forEach(role => {
     toggleRole(role, "hl-exception");
   });
 }
 
-/* PWA: service worker registration */
+/* ====== CHAPTER 9 EXAMPLE DATA ====== */
+/* Lightly adapted from Liang-style examples and your .java files */
+const ch9Examples = {
+  simpleCircle: {
+    title: "SimpleCircle – basic objects and methods",
+    code: 
+`// SimpleCircle.java
+public class SimpleCircle {
+  double radius;
+
+  SimpleCircle() {
+    radius = 1;
+  }
+
+  SimpleCircle(double newRadius) {
+    radius = newRadius;
+  }
+
+  double getArea() {
+    return radius * radius * Math.PI;
+  }
+
+  double getPerimeter() {
+    return 2 * radius * Math.PI;
+  }
+}
+
+// TestSimpleCircle.java
+public class TestSimpleCircle {
+  public static void main(String[] args) {
+    SimpleCircle c1 = new SimpleCircle();
+    SimpleCircle c2 = new SimpleCircle(5);
+    System.out.println("c1 radius = " + c1.radius +
+                       " area = " + c1.getArea());
+    System.out.println("c2 radius = " + c2.radius +
+                       " area = " + c2.getArea());
+  }
+}`,
+    steps: [
+      "The SimpleCircle class defines a field radius and two constructors.",
+      "In main, c1 is created with the no-arg constructor → radius = 1.",
+      "c2 is created with radius 5 using the second constructor.",
+      "getArea() uses radius * radius * Math.PI.",
+      "Two lines are printed: one for c1, one for c2, each showing radius and area."
+    ],
+    console:
+`c1 radius = 1.0 area = 3.141592653589793
+c2 radius = 5.0 area = 78.53981633974483`
+  },
+
+  staticCircle: {
+    title: "CircleWithStaticMembers – static field shared by all objects",
+    code:
+`// CircleWithStaticMembers.java
+public class CircleWithStaticMembers {
+  double radius;
+  static int numberOfObjects = 0;
+
+  CircleWithStaticMembers() {
+    radius = 1.0;
+    numberOfObjects++;
+  }
+
+  CircleWithStaticMembers(double newRadius) {
+    radius = newRadius;
+    numberOfObjects++;
+  }
+
+  static int getNumberOfObjects() {
+    return numberOfObjects;
+  }
+
+  double getArea() {
+    return radius * radius * Math.PI;
+  }
+}
+
+// TestCircleWithStaticMembers.java
+public class TestCircleWithStaticMembers {
+  public static void main(String[] args) {
+    System.out.println("Before creating objects");
+    System.out.println("numberOfObjects = " +
+      CircleWithStaticMembers.numberOfObjects);
+
+    CircleWithStaticMembers c1 = new CircleWithStaticMembers();
+    System.out.println("\\nAfter creating c1");
+    System.out.println("c1 radius = " + c1.radius);
+    System.out.println("numberOfObjects = " +
+      CircleWithStaticMembers.numberOfObjects);
+
+    CircleWithStaticMembers c2 =
+      new CircleWithStaticMembers(5);
+    System.out.println("\\nAfter creating c2");
+    System.out.println("c2 radius = " + c2.radius);
+    System.out.println("numberOfObjects = " +
+      CircleWithStaticMembers.numberOfObjects);
+  }
+}`,
+    steps: [
+      "numberOfObjects is static, so it is shared by all CircleWithStaticMembers objects.",
+      "Before any object is created, numberOfObjects = 0.",
+      "Creating c1 with the no-arg constructor sets radius = 1.0 and increments numberOfObjects to 1.",
+      "Creating c2 with radius 5 sets radius = 5.0 and increments numberOfObjects to 2.",
+      "Accessing CircleWithStaticMembers.numberOfObjects shows the same value (2) from anywhere."
+    ],
+    console:
+`Before creating objects
+numberOfObjects = 0
+
+After creating c1
+c1 radius = 1.0
+numberOfObjects = 1
+
+After creating c2
+c2 radius = 5.0
+numberOfObjects = 2`
+  },
+
+  passObject: {
+    title: "TestPassObject – passing objects to methods",
+    code:
+`// Circle.java (simplified)
+class Circle {
+  double radius;
+
+  Circle(double newRadius) {
+    radius = newRadius;
+  }
+
+  double getArea() {
+    return radius * radius * Math.PI;
+  }
+}
+
+// TestPassObject.java
+public class TestPassObject {
+  public static void main(String[] args) {
+    Circle myCircle = new Circle(1);
+    int n = 5;
+    printAreas(myCircle, n);
+
+    System.out.println("\\nAfter call, radius is " +
+      myCircle.radius);
+  }
+
+  public static void printAreas(Circle c, int times) {
+    System.out.println("Radius    \\tArea");
+    while (times >= 1) {
+      System.out.println(c.radius + "    \\t" + c.getArea());
+      c.radius++;
+      times--;
+    }
+  }
+}`,
+    steps: [
+      "A Circle object myCircle is created with initial radius = 1.",
+      "printAreas(myCircle, 5) is called; parameter c refers to the SAME Circle object.",
+      "Inside the loop, the current radius and area are printed.",
+      "Then c.radius++ increases the radius of the same object each time.",
+      "After the loop, myCircle.radius has been incremented several times.",
+      "Back in main, printing myCircle.radius shows the UPDATED radius."
+    ],
+    console:
+`Radius    	Area
+1.0       	3.141592653589793
+2.0       	12.566370614359172
+3.0       	28.274333882308138
+4.0       	50.26548245743669
+5.0       	78.53981633974483
+
+After call, radius is 6.0`
+  },
+
+  tv: {
+    title: "TV – encapsulating state and behavior",
+    code:
+`// TV.java
+public class TV {
+  int channel = 1;
+  int volumeLevel = 1;
+  boolean on = false;
+
+  public TV() {
+  }
+
+  public void turnOn() {
+    on = true;
+  }
+
+  public void turnOff() {
+    on = false;
+  }
+
+  public void setChannel(int newChannel) {
+    if (on && newChannel >= 1 && newChannel <= 120)
+      channel = newChannel;
+  }
+
+  public void setVolume(int newVolumeLevel) {
+    if (on && newVolumeLevel >= 1 && newVolumeLevel <= 7)
+      volumeLevel = newVolumeLevel;
+  }
+
+  public void channelUp() {
+    if (on && channel < 120)
+      channel++;
+  }
+
+  public void channelDown() {
+    if (on && channel > 1)
+      channel--;
+  }
+
+  public void volumeUp() {
+    if (on && volumeLevel < 7)
+      volumeLevel++;
+  }
+
+  public void volumeDown() {
+    if (on && volumeLevel > 1)
+      volumeLevel--;
+  }
+}
+
+// TestTV.java
+public class TestTV {
+  public static void main(String[] args) {
+    TV tv1 = new TV();
+    tv1.turnOn();
+    tv1.setChannel(30);
+    tv1.setVolume(3);
+
+    TV tv2 = new TV();
+    tv2.turnOn();
+    tv2.setChannel(3);
+    tv2.setVolume(2);
+    tv2.channelUp();
+    tv2.volumeUp();
+
+    System.out.println("tv1 channel = " + tv1.channel +
+      " volume = " + tv1.volumeLevel);
+    System.out.println("tv2 channel = " + tv2.channel +
+      " volume = " + tv2.volumeLevel);
+  }
+}`,
+    steps: [
+      "The TV class has fields for channel, volumeLevel, and power state (on/off).",
+      "Public methods turnOn/turnOff, setChannel, and setVolume control the state.",
+      "In main, tv1 is turned on, set to channel 30 and volume 3.",
+      "tv2 is turned on, set to channel 3 and volume 2, then channelUp() and volumeUp() are called.",
+      "Each TV object maintains its own channel and volume.",
+      "The final printout shows different state for tv1 and tv2."
+    ],
+    console:
+`tv1 channel = 30 volume = 3
+tv2 channel = 4 volume = 3`
+  }
+};
+
+let currentCh9Example = "simpleCircle";
+
+function loadCh9Example(key) {
+  currentCh9Example = key;
+  const ex = ch9Examples[key];
+  const titleEl = document.getElementById("ex9Title");
+  const codeEl = document.getElementById("ex9Code");
+  const stepsEl = document.getElementById("ex9Steps");
+  const consoleEl = document.getElementById("ex9Console");
+
+  titleEl.textContent = ex.title;
+  codeEl.textContent = ex.code;
+  stepsEl.innerHTML = "";
+  consoleEl.textContent = "";
+
+  // update button active state
+  const btns = document.querySelectorAll(".ex9-btn");
+  btns.forEach(b => b.classList.remove("active"));
+  const activeBtn = document.querySelector('.ex9-btn[data-exkey="' + key + '"]');
+  if (activeBtn) activeBtn.classList.add("active");
+}
+
+function runCh9Example() {
+  const ex = ch9Examples[currentCh9Example];
+  const stepsEl = document.getElementById("ex9Steps");
+  const consoleEl = document.getElementById("ex9Console");
+  stepsEl.innerHTML = "";
+
+  ex.steps.forEach(step => {
+    const li = document.createElement("li");
+    li.textContent = step;
+    stepsEl.appendChild(li);
+  });
+  consoleEl.textContent = ex.console;
+}
+
+/* ====== PWA: service worker registration ====== */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
@@ -216,6 +573,7 @@ if ('serviceWorker' in navigator) {
 
 window.onload = function() {
   showChapter('chap9');
+  loadCh9Example('simpleCircle');
 };
 </script>
 </head>
@@ -232,7 +590,7 @@ window.onload = function() {
     <div class="chap-tab"        data-target="chap12" onclick="showChapter('chap12')">Ch 12 – Exceptions</div>
   </div>
 
-  <!-- Highlight Controls (sticky) -->
+  <!-- Highlight Controls -->
   <div id="controlsWrapper">
     <div id="controls">
       <button onclick="toggleFields()">Fields</button>
@@ -256,101 +614,49 @@ window.onload = function() {
 
   <!-- ===================== CHAPTER 9 ===================== -->
   <div class="chapter-section active-chap" id="chap9">
-    <h2>Chapter 9 – Objects and Classes</h2>
+    <h2>Chapter 9 – Objects and Classes (Interactive Examples)</h2>
 
-    <div class="code-title">CircleWithStaticMembers.java</div>
-    <div class="code-block">
-<span>package chapter09;</span>
-<span></span>
-<span>public class CircleWithStaticMembers {</span>
-<span>  /** The radius of the circle */</span>
-<span>  <span data-role="field">double radius;</span></span>
-<span></span>
-<span>  /** The number of the objects created */</span>
-<span>  <span data-role="static">static</span> <span data-role="field">int numberOfObjects</span> = 0;</span>
-<span></span>
-<span>  /** Construct a circle with radius 1 */</span>
-<span>  <span data-role="constructor">CircleWithStaticMembers()</span> {</span>
-<span>    radius = 1.0;</span>
-<span>    numberOfObjects++;</span>
-<span>  }</span>
-<span></span>
-<span>  /** Construct a circle with a specified radius */</span>
-<span>  <span data-role="constructor">CircleWithStaticMembers(double radius)</span> {</span>
-<span>    <span data-role="this">this</span>.<span data-role="this">radius</span> = radius;</span>
-<span>    numberOfObjects++;</span>
-<span>  }</span>
-<span></span>
-<span>  /** Return numberOfObjects */</span>
-<span>  <span data-role="static">static</span> int getNumberOfObjects() {</span>
-<span>    return numberOfObjects;</span>
-<span>  }</span>
-<span></span>
-<span>  /** Return the area of this circle */</span>
-<span>  double getArea() {</span>
-<span>    return radius * radius * Math.PI;</span>
-<span>  }</span>
-<span>}</span>
+    <div class="ex-panel">
+      <h3>Choose an example from Chapter 9:</h3>
+      <div class="ex9-picker">
+        <button class="ex9-btn active" data-exkey="simpleCircle"
+                onclick="loadCh9Example('simpleCircle')">
+          SimpleCircle (basic objects)
+        </button>
+        <button class="ex9-btn" data-exkey="staticCircle"
+                onclick="loadCh9Example('staticCircle')">
+          CircleWithStaticMembers (static)
+        </button>
+        <button class="ex9-btn" data-exkey="passObject"
+                onclick="loadCh9Example('passObject')">
+          TestPassObject (pass object)
+        </button>
+        <button class="ex9-btn" data-exkey="tv"
+                onclick="loadCh9Example('tv')">
+          TV / TestTV (state & behavior)
+        </button>
+      </div>
     </div>
 
-    <div class="code-title">TestCircleWithStaticMembers.java</div>
-    <div class="code-block">
-<span>package chapter09;</span>
-<span></span>
-<span>public class TestCircleWithStaticMembers {</span>
-<span>  public static void main(String[] args) {</span>
-<span>    System.out.println("Before creating objects");</span>
-<span>    System.out.println("The number of Circle objects is " +</span>
-<span>      CircleWithStaticMembers.numberOfObjects);</span>
-<span></span>
-<span>    // Create c1</span>
-<span>    CircleWithStaticMembers c1 = <span data-role="new">new CircleWithStaticMembers()</span>;</span>
-<span></span>
-<span>    System.out.println("\nAfter creating c1");</span>
-<span>    System.out.println("c1: radius (" + c1.radius +</span>
-<span>      ") and number of Circle objects (" +</span>
-<span>      c1.numberOfObjects + ")");</span>
-<span></span>
-<span>    // Create c2</span>
-<span>    CircleWithStaticMembers c2 = <span data-role="new">new CircleWithStaticMembers(5)</span>;</span>
-<span></span>
-<span>    // Modify c1</span>
-<span>    c1.radius = 9;</span>
-<span></span>
-<span>    System.out.println("\nAfter creating c2 and modifying c1");</span>
-<span>    System.out.println("c1: radius (" + c1.radius +</span>
-<span>      ") and number of Circle objects (" +</span>
-<span>      c1.numberOfObjects + ")");</span>
-<span>    System.out.println("c2: radius (" + c2.radius +</span>
-<span>      ") and number of Circle objects (" +</span>
-<span>      c2.numberOfObjects + ")");</span>
-<span>  }</span>
-<span>}</span>
-    </div>
+    <div class="ex9-layout">
+      <!-- Left: code viewer -->
+      <div>
+        <div class="code-title" id="ex9Title">
+          SimpleCircle – basic objects and methods
+        </div>
+        <pre class="code-block" id="ex9Code"></pre>
+      </div>
 
-    <div class="code-title">SimpleGeometricObject.java</div>
-    <div class="code-block">
-<span>package chapter11; // used in Chapter 9 and 11</span>
-<span></span>
-<span>public class SimpleGeometricObject {</span>
-<span>  <span data-role="field">private String color</span> = "white";</span>
-<span>  <span data-role="field">private boolean filled</span>;</span>
-<span>  <span data-role="field">private java.util.Date dateCreated</span>;</span>
-<span></span>
-<span>  /** Construct a default geometric object */</span>
-<span>  <span data-role="constructor">public SimpleGeometricObject()</span> {</span>
-<span>    dateCreated = new java.util.Date();</span>
-<span>  }</span>
-<span></span>
-<span>  /** Construct a geometric object with the specified color and filled */</span>
-<span>  <span data-role="constructor">public SimpleGeometricObject(String color, boolean filled)</span> {</span>
-<span>    dateCreated = new java.util.Date();</span>
-<span>    this.color = color;</span>
-<span>    this.filled = filled;</span>
-<span>  }</span>
-<span></span>
-<span>  // getters, setters, and toString omitted for brevity</span>
-<span>}</span>
+      <!-- Right: steps + console -->
+      <div class="ex-panel">
+        <h3>Step-by-step reasoning</h3>
+        <ol class="ex-steps" id="ex9Steps"></ol>
+
+        <button class="run-btn" onclick="runCh9Example()">▶ Run Example (simulate output)</button>
+
+        <h3>Simulated console output</h3>
+        <pre class="console-block" id="ex9Console"></pre>
+      </div>
     </div>
   </div>
 
@@ -360,84 +666,68 @@ window.onload = function() {
 
     <div class="code-title">Course.java (Aggregation)</div>
     <div class="code-block">
-<span>package chapter10;</span>
-<span></span>
-<span>public class Course {</span>
-<span>  <span data-role="field">private String courseName</span>;</span>
-<span>  <span data-role="field">private String[] students</span> = new String[100];</span>
-<span>  <span data-role="field">private int numberOfStudents</span>;</span>
-<span></span>
-<span>  <span data-role="constructor">public Course(String courseName)</span> {</span>
-<span>    this.courseName = courseName;</span>
-<span>  }</span>
-<span></span>
-<span>  public void addStudent(String student) {</span>
-<span>    students[numberOfStudents] = student;</span>
-<span>    numberOfStudents++;</span>
-<span>  }</span>
-<span></span>
-<span>  public String[] getStudents() {</span>
-<span>    return students;</span>
-<span>  }</span>
-<span></span>
-<span>  public int getNumberOfStudents() {</span>
-<span>    return numberOfStudents;</span>
-<span>  }</span>
-<span></span>
-<span>  public String getCourseName() {</span>
-<span>    return courseName;</span>
-<span>  }</span>
-<span>}</span>
-    </div>
+package chapter10;
 
-    <div class="code-title">TestCourse.java</div>
-    <div class="code-block">
-<span>package chapter10;</span>
-<span></span>
-<span>public class TestCourse {</span>
-<span>  public static void main(String[] args) {</span>
-<span>    Course course1 = <span data-role="new">new Course("Data Structures")</span>;</span>
-<span>    course1.addStudent("Peter");</span>
-<span>    course1.addStudent("Kim");</span>
-<span></span>
-<span>    System.out.println("Number of students in " +</span>
-<span>      course1.getCourseName() + ": " + course1.getNumberOfStudents());</span>
-<span>  }</span>
-<span>}</span>
+public class Course {
+  <span data-role="field">private String courseName</span>;
+  <span data-role="field">private String[] students</span> = new String[100];
+  <span data-role="field">private int numberOfStudents</span>;
+
+  <span data-role="constructor">public Course(String courseName)</span> {
+    this.courseName = courseName;
+  }
+
+  public void addStudent(String student) {
+    students[numberOfStudents] = student;
+    numberOfStudents++;
+  }
+
+  public String[] getStudents() {
+    return students;
+  }
+
+  public int getNumberOfStudents() {
+    return numberOfStudents;
+  }
+
+  public String getCourseName() {
+    return courseName;
+  }
+}
     </div>
 
     <div class="code-title">StackOfIntegers.java</div>
     <div class="code-block">
-<span>package chapter10;</span>
-<span></span>
-<span>public class StackOfIntegers {</span>
-<span>  <span data-role="field">private int[] elements</span>;</span>
-<span>  <span data-role="field">private int size</span>;</span>
-<span>  <span data-role="static">public static final int DEFAULT_CAPACITY</span> = 16;</span>
-<span></span>
-<span>  <span data-role="constructor">public StackOfIntegers()</span> {</span>
-<span>    this(DEFAULT_CAPACITY);</span>
-<span>  }</span>
-<span></span>
-<span>  <span data-role="constructor">public StackOfIntegers(int capacity)</span> {</span>
-<span>    elements = <span data-role="new">new int[capacity]</span>;</span>
-<span>  }</span>
-<span></span>
-<span>  public void push(int value) {</span>
-<span>    if (size >= elements.length) {</span>
-<span>      // resize logic omitted</span>
-<span>    }</span>
-<span>    elements[size++] = value;</span>
-<span>  }</span>
-<span></span>
-<span>  public int pop() {</span>
-<span>    return elements[--size];</span>
-<span>  }</span>
-<span></span>
-<span>  public boolean empty() {</span>
-<span>    return size == 0;</span>
-<span>  }</span>
-<span>}</span>
+package chapter10;
+
+public class StackOfIntegers {
+  <span data-role="field">private int[] elements</span>;
+  <span data-role="field">private int size</span>;
+  <span data-role="static">public static final int DEFAULT_CAPACITY</span> = 16;
+
+  <span data-role="constructor">public StackOfIntegers()</span> {
+    this(DEFAULT_CAPACITY);
+  }
+
+  <span data-role="constructor">public StackOfIntegers(int capacity)</span> {
+    elements = <span data-role="new">new int[capacity]</span>;
+  }
+
+  public void push(int value) {
+    if (size >= elements.length) {
+      // resize logic omitted
+    }
+    elements[size++] = value;
+  }
+
+  public int pop() {
+    return elements[--size];
+  }
+
+  public boolean empty() {
+    return size == 0;
+  }
+}
     </div>
   </div>
 
@@ -447,106 +737,107 @@ window.onload = function() {
 
     <div class="code-title">SimpleGeometricObject.java (Base Class)</div>
     <div class="code-block">
-<span>package chapter11;</span>
-<span></span>
-<span>public class SimpleGeometricObject {</span>
-<span>  <span data-role="field">private String color</span> = "white";</span>
-<span>  <span data-role="field">private boolean filled</span>;</span>
-<span>  <span data-role="field">private java.util.Date dateCreated</span>;</span>
-<span></span>
-<span>  <span data-role="constructor">public SimpleGeometricObject()</span> {</span>
-<span>    dateCreated = new java.util.Date();</span>
-<span>  }</span>
-<span></span>
-<span>  <span data-role="constructor">public SimpleGeometricObject(String color, boolean filled)</span> {</span>
-<span>    dateCreated = new java.util.Date();</span>
-<span>    this.color = color;</span>
-<span>    this.filled = filled;</span>
-<span>  }</span>
-<span></span>
-<span>  // getters, setters, and toString omitted for brevity</span>
-<span>}</span>
+package chapter11;
+
+public class SimpleGeometricObject {
+  <span data-role="field">private String color</span> = "white";
+  <span data-role="field">private boolean filled</span>;
+  <span data-role="field">private java.util.Date dateCreated</span>;
+
+  <span data-role="constructor">public SimpleGeometricObject()</span> {
+    dateCreated = new java.util.Date();
+  }
+
+  <span data-role="constructor">public SimpleGeometricObject(String color, boolean filled)</span> {
+    dateCreated = new java.util.Date();
+    this.color = color;
+    this.filled = filled;
+  }
+
+  // getters, setters, and toString omitted
+}
     </div>
 
     <div class="code-title">CircleFromSimpleGeometricObject.java</div>
     <div class="code-block">
-<span>package chapter11;</span>
-<span></span>
-<span>public class CircleFromSimpleGeometricObject <span data-role="extends">extends</span> SimpleGeometricObject {</span>
-<span>  <span data-role="field">private double radius</span>;</span>
-<span></span>
-<span>  <span data-role="constructor">public CircleFromSimpleGeometricObject()</span> {</span>
-<span>  }</span>
-<span></span>
-<span>  <span data-role="constructor">public CircleFromSimpleGeometricObject(double radius)</span> {</span>
-<span>    this.radius = radius;</span>
-<span>  }</span>
-<span></span>
-<span>  <span data-role="constructor">public CircleFromSimpleGeometricObject(double radius, String color, boolean filled)</span> {</span>
-<span>    <span data-role="super">super</span>(color, filled);</span>
-<span>    this.radius = radius;</span>
-<span>  }</span>
-<span></span>
-<span>  public double getRadius() {</span>
-<span>    return radius;</span>
-<span>  }</span>
-<span></span>
-<span>  public double getArea() {</span>
-<span>    return radius * radius * Math.PI;</span>
-<span>  }</span>
-<span></span>
-<span>  public double getDiameter() {</span>
-<span>    return 2 * radius;</span>
-<span>  }</span>
-<span>}</span>
+package chapter11;
+
+public class CircleFromSimpleGeometricObject <span data-role="extends">extends</span> SimpleGeometricObject {
+  <span data-role="field">private double radius</span>;
+
+  <span data-role="constructor">public CircleFromSimpleGeometricObject()</span> {
+  }
+
+  <span data-role="constructor">public CircleFromSimpleGeometricObject(double radius)</span> {
+    this.radius = radius;
+  }
+
+  <span data-role="constructor">public CircleFromSimpleGeometricObject(double radius, String color, boolean filled)</span> {
+    <span data-role="super">super</span>(color, filled);
+    this.radius = radius;
+  }
+
+  public double getRadius() {
+    return radius;
+  }
+
+  public double getArea() {
+    return radius * radius * Math.PI;
+  }
+
+  public double getDiameter() {
+    return 2 * radius;
+  }
+}
     </div>
 
     <div class="code-title">RectangleFromSimpleGeometricObject.java</div>
     <div class="code-block">
-<span>package chapter11;</span>
-<span></span>
-<span>public class RectangleFromSimpleGeometricObject <span data-role="extends">extends</span> SimpleGeometricObject {</span>
-<span>  <span data-role="field">private double width</span>;</span>
-<span>  <span data-role="field">private double height</span>;</span>
-<span></span>
-<span>  <span data-role="constructor">public RectangleFromSimpleGeometricObject()</span> {</span>
-<span>  }</span>
-<span></span>
-<span>  <span data-role="constructor">public RectangleFromSimpleGeometricObject(double width, double height)</span> {</span>
-<span>    this.width = width;</span>
-<span>    this.height = height;</span>
-<span>  }</span>
-<span></span>
-<span>  public double getArea() {</span>
-<span>    return width * height;</span>
-<span>  }</span>
-<span></span>
-<span>  public double getPerimeter() {</span>
-<span>    return 2 * (width + height);</span>
-<span>  }</span>
-<span>}</span>
+package chapter11;
+
+public class RectangleFromSimpleGeometricObject <span data-role="extends">extends</span> SimpleGeometricObject {
+  <span data-role="field">private double width</span>;
+  <span data-role="field">private double height</span>;
+
+  <span data-role="constructor">public RectangleFromSimpleGeometricObject()</span> {
+  }
+
+  <span data-role="constructor">public RectangleFromSimpleGeometricObject(double width, double height)</span> {
+    this.width = width;
+    this.height = height;
+  }
+
+  public double getArea() {
+    return width * height;
+  }
+
+  public double getPerimeter() {
+    return 2 * (width + height);
+  }
+}
     </div>
 
     <div class="code-title">TestCircleRectangle.java</div>
     <div class="code-block">
-<span>package chapter11;</span>
-<span></span>
-<span>public class TestCircleRectangle {</span>
-<span>  public static void main(String[] args) {</span>
-<span>    CircleFromSimpleGeometricObject circle =</span>
-<span>      <span data-role="new">new CircleFromSimpleGeometricObject(1)</span>;</span>
-<span>    System.out.println("A circle " + circle.toString());</span>
-<span>    System.out.println("The radius is " + circle.getRadius());</span>
-<span>    System.out.println("The area is " + circle.getArea());</span>
-<span>    System.out.println("The diameter is " + circle.getDiameter());</span>
-<span></span>
-<span>    RectangleFromSimpleGeometricObject rectangle =</span>
-<span>      <span data-role="new">new RectangleFromSimpleGeometricObject(2, 4)</span>;</span>
-<span>    System.out.println("\nA rectangle " + rectangle.toString());</span>
-<span>    System.out.println("The area is " + rectangle.getArea());</span>
-<span>    System.out.println("The perimeter is " + rectangle.getPerimeter());</span>
-<span>  }</span>
-<span>}</span>
+package chapter11;
+
+public class TestCircleRectangle {
+  public static void main(String[] args) {
+    CircleFromSimpleGeometricObject circle =
+      new CircleFromSimpleGeometricObject(1);
+    System.out.println("A circle " + circle.toString());
+    System.out.println("The radius is " + circle.getRadius());
+    System.out.println("The area is " + circle.getArea());
+    System.out.println("The diameter is " + circle.getDiameter());
+
+    RectangleFromSimpleGeometricObject rectangle =
+      new RectangleFromSimpleGeometricObject(2, 4);
+    System.out.println("\\nA rectangle " + rectangle.toString());
+    System.out.println("The area is " + rectangle.getArea());
+    System.out.println("The perimeter is " +
+      rectangle.getPerimeter());
+  }
+}
     </div>
   </div>
 
@@ -556,76 +847,76 @@ window.onload = function() {
 
     <div class="code-title">QuotientWithException.java</div>
     <div class="code-block">
-<span>package chapter12;</span>
-<span></span>
-<span>import java.util.Scanner;</span>
-<span></span>
-<span>public class QuotientWithException {</span>
-<span>  public static void main(String[] args) {</span>
-<span>    Scanner input = new Scanner(System.in);</span>
-<span>    System.out.print("Enter two integers: ");</span>
-<span>    int number1 = input.nextInt();</span>
-<span>    int number2 = input.nextInt();</span>
-<span></span>
-<span>    try { <span data-role="try">// try block</span></span>
-<span>      if (number2 == 0)</span>
-<span>        <span data-role="throw">throw</span> new ArithmeticException("Divisor cannot be zero");</span>
-<span></span>
-<span>      int result = number1 / number2;</span>
-<span>      System.out.println(number1 + " / " + number2 + " is " + result);</span>
-<span>    }</span>
-<span>    <span data-role="catch">catch</span> (ArithmeticException ex) {</span>
-<span>      System.out.println("Exception: " + ex.getMessage());</span>
-<span>    }</span>
-<span></span>
-<span>    System.out.println("Execution continues after the catch block.");</span>
-<span>  }</span>
-<span>}</span>
+package chapter12;
+
+import java.util.Scanner;
+
+public class QuotientWithException {
+  public static void main(String[] args) {
+    Scanner input = new Scanner(System.in);
+    System.out.print("Enter two integers: ");
+    int number1 = input.nextInt();
+    int number2 = input.nextInt();
+
+    try { <span data-role="try">// try block</span>
+      if (number2 == 0)
+        <span data-role="throw">throw</span> new ArithmeticException("Divisor cannot be zero");
+
+      int result = number1 / number2;
+      System.out.println(number1 + " / " + number2 + " is " + result);
+    }
+    <span data-role="catch">catch</span> (ArithmeticException ex) {
+      System.out.println("Exception: " + ex.getMessage());
+    }
+
+    System.out.println("Execution continues after the catch block.");
+  }
+}
     </div>
 
     <div class="code-title">Custom Exception Example</div>
     <div class="code-block">
-<span>package chapter12;</span>
-<span></span>
-<span>class InvalidRadiusException <span data-role="extends">extends</span> Exception {</span>
-<span>  <span data-role="constructor">public InvalidRadiusException(String message)</span> {</span>
-<span>    super(message);</span>
-<span>  }</span>
-<span>}</span>
-<span></span>
-<span>class CircleWithCustomException {</span>
-<span>  <span data-role="field">private double radius</span>;</span>
-<span></span>
-<span>  <span data-role="constructor">public CircleWithCustomException(double radius)</span></span>
-<span>      <span data-role="throws">throws</span> InvalidRadiusException {</span>
-<span>    setRadius(radius);</span>
-<span>  }</span>
-<span></span>
-<span>  public void setRadius(double radius)</span>
-<span>      <span data-role="throws">throws</span> InvalidRadiusException {</span>
-<span>    if (radius &lt; 0)</span>
-<span>      <span data-role="throw">throw</span> new InvalidRadiusException("Radius cannot be negative");</span>
-<span>    this.radius = radius;</span>
-<span>  }</span>
-<span>}</span>
+package chapter12;
+
+class InvalidRadiusException <span data-role="extends">extends</span> Exception {
+  <span data-role="constructor">public InvalidRadiusException(String message)</span> {
+    super(message);
+  }
+}
+
+class CircleWithCustomException {
+  <span data-role="field">private double radius</span>;
+
+  <span data-role="constructor">public CircleWithCustomException(double radius)</span>
+      <span data-role="throws">throws</span> InvalidRadiusException {
+    setRadius(radius);
+  }
+
+  public void setRadius(double radius)
+      <span data-role="throws">throws</span> InvalidRadiusException {
+    if (radius &lt; 0)
+      <span data-role="throw">throw</span> new InvalidRadiusException("Radius cannot be negative");
+    this.radius = radius;
+  }
+}
     </div>
 
     <div class="code-title">TestCircleWithCustomException.java</div>
     <div class="code-block">
-<span>package chapter12;</span>
-<span></span>
-<span>public class TestCircleWithCustomException {</span>
-<span>  public static void main(String[] args) {</span>
-<span>    try { <span data-role="try">// try block</span></span>
-<span>      CircleWithCustomException c =</span>
-<span>        <span data-role="new">new CircleWithCustomException(-5)</span>;</span>
-<span>      System.out.println("Circle created.");</span>
-<span>    }</span>
-<span>    <span data-role="catch">catch</span> (InvalidRadiusException ex) {</span>
-<span>      System.out.println("Error: " + ex.getMessage());</span>
-<span>    }</span>
-<span>  }</span>
-<span>}</span>
+package chapter12;
+
+public class TestCircleWithCustomException {
+  public static void main(String[] args) {
+    try { <span data-role="try">// try block</span>
+      CircleWithCustomException c =
+        new CircleWithCustomException(-5);
+      System.out.println("Circle created.");
+    }
+    <span data-role="catch">catch</span> (InvalidRadiusException ex) {
+      System.out.println("Error: " + ex.getMessage());
+    }
+  }
+}
     </div>
   </div>
 
