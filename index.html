@@ -213,6 +213,15 @@
     margin-bottom: 4px;
   }
 
+  .ex-analysis {
+    font-size: 0.78rem;
+    padding-left: 18px;
+    margin-top: 6px;
+  }
+  .ex-analysis li {
+    margin-bottom: 3px;
+  }
+
   .run-btn {
     margin-top: 6px;
     margin-bottom: 6px;
@@ -225,7 +234,7 @@
   }
 
   #explainPanel {
-    position: absolute;      /* now positioned near the clicked line */
+    position: absolute;      /* positioned near the clicked line */
     max-width: 340px;
     background: #ffffff;
     border-radius: 10px;
@@ -442,7 +451,6 @@ document.addEventListener("click", function(e) {
     showExplanation(key, rect);
     e.stopPropagation();
   } else {
-    // Clicked outside any hotspot and outside the panel -> optional auto-close
     const panel = document.getElementById("explainPanel");
     if (!panel.contains(e.target)) {
       panel.style.display = "none";
@@ -450,7 +458,7 @@ document.addEventListener("click", function(e) {
   }
 });
 
-/* ====== CHAPTER 9 EXAMPLE DATA (with spans & data-role + data-explain) ====== */
+/* ====== CHAPTER 9 EXAMPLE DATA (with analysis) ====== */
 const ch9Examples = {
   simpleCircle: {
     title: "SimpleCircle – basic objects and methods",
@@ -502,7 +510,20 @@ public class TestSimpleCircle {
     ],
     console:
 `c1 radius = 1.0 area = 3.141592653589793
-c2 radius = 5.0 area = 78.53981633974483`
+c2 radius = 5.0 area = 78.53981633974483`,
+    analysis: [
+      "Class: SimpleCircle – basic model of a circle (Liang Ch 9: defining classes).",
+      "Field: double radius – instance field, each SimpleCircle object has its own radius value (heap).",
+      "Constructor #1: SimpleCircle() – no-arg constructor that sets the default radius to 1.",
+      "Constructor #2: SimpleCircle(double newRadius) – custom constructor that copies parameter newRadius into the instance field radius.",
+      "Method: double getArea() – instance method; computes area using the current radius (radius² × π).",
+      "Method: double getPerimeter() – instance method; computes circumference 2 × radius × π.",
+      "Test class: TestSimpleCircle – contains main(String[] args) entry point.",
+      "In main: SimpleCircle c1 = new SimpleCircle(); – creates a new object on the heap with radius = 1.",
+      "In main: SimpleCircle c2 = new SimpleCircle(5); – creates a second object with radius = 5.",
+      "Each variable c1 and c2 is a reference variable on the stack that points to a different SimpleCircle object on the heap.",
+      "System.out.println(...) – uses string concatenation to print both the radius and the computed area."
+    ]
   },
 
   staticCircle: {
@@ -575,7 +596,21 @@ numberOfObjects = 1
 
 After creating c2
 c2 radius = 5.0
-numberOfObjects = 2`
+numberOfObjects = 2`,
+    analysis: [
+      "Class: CircleWithStaticMembers – circle model that also tracks how many circle objects have been created.",
+      "Field: double radius – instance field; each circle object has its own radius value.",
+      "Static field: static int numberOfObjects = 0 – belongs to the class itself, stored in the method area (one shared copy).",
+      "Constructor #1: CircleWithStaticMembers() – no-arg constructor; sets radius to 1.0 and increments numberOfObjects.",
+      "Constructor #2: CircleWithStaticMembers(double newRadius) – sets radius to newRadius and increments numberOfObjects.",
+      "Static method: static int getNumberOfObjects() – can be called without any object: CircleWithStaticMembers.getNumberOfObjects().",
+      "Instance method: double getArea() – computes the area of the current circle object using its radius.",
+      "Test class: TestCircleWithStaticMembers – main method that drives the demo.",
+      "Before any object is created, CircleWithStaticMembers.numberOfObjects is 0.",
+      "Creating c1 – constructor increments numberOfObjects to 1; c1.radius is 1.0.",
+      "Creating c2 – constructor increments numberOfObjects to 2; c2.radius is 5.0.",
+      "Access pattern: numberOfObjects is accessed via the class name (CircleWithStaticMembers.numberOfObjects), which is the recommended style for static fields (Liang Ch 9: static members)."
+    ]
   },
 
   passObject: {
@@ -632,7 +667,24 @@ public class TestPassObject {
 4.0       	50.26548245743669
 5.0       	78.53981633974483
 
-After call, radius is 6.0`
+After call, radius is 6.0`,
+    analysis: [
+      "Class: Circle – simple class with one instance field radius and a constructor Circle(double newRadius).",
+      "Field: double radius – instance field that holds the radius for each Circle object.",
+      "Constructor: Circle(double newRadius) – copies the parameter newRadius into this.radius.",
+      "Method: double getArea() – instance method returning the circle’s area using the current radius.",
+      "Test class: TestPassObject – demonstrates passing objects as parameters (Liang Ch 9: passing objects to methods).",
+      "In main: Circle myCircle = new Circle(1); – creates one Circle object on the heap with radius = 1.",
+      "Variable: int n = 5; – primitive variable on the stack, storing the number of iterations.",
+      "Call: printAreas(myCircle, n); – passes a REFERENCE to the Circle object and a copy of n’s value (5).",
+      "Parameter: Circle c – reference parameter; c and myCircle both point to the SAME Circle object on the heap.",
+      "Parameter: int times – copy of n (primitive parameter); changes to times do NOT affect n in main.",
+      "Loop: while (times >= 1) – repeats until times becomes 0.",
+      "Inside loop: System.out.println(c.radius + \"\\t\" + c.getArea()); – prints current radius and area.",
+      "Inside loop: c.radius++; – directly modifies the radius field of the shared Circle object.",
+      "After loop: myCircle.radius is now larger (incremented each iteration), showing that passing objects allows the method to mutate shared state.",
+      "Final print in main: shows that changes made through parameter c are visible through myCircle as well."
+    ]
   },
 
   tv: {
@@ -719,7 +771,24 @@ public class TestTV {
     ],
     console:
 `tv1 channel = 30 volume = 3
-tv2 channel = 4 volume = 3`
+tv2 channel = 4 volume = 3`,
+    analysis: [
+      "Class: TV – models a television as an object with state (fields) and behavior (methods).",
+      "Fields: int channel, int volumeLevel, boolean on – instance fields that store the current state for each TV object.",
+      "Field defaults: channel = 1, volumeLevel = 1, on = false – initial values when a TV is constructed.",
+      "Constructor: public TV() – no-arg constructor; relies on field initializers to set default state.",
+      "Method: public void turnOn() – sets on = true; TV is now powered.",
+      "Method: public void turnOff() – sets on = false; channel/volume changes are ignored when off.",
+      "Method: public void setChannel(int newChannel) – validates power state (on) and range (1–120) before assigning channel.",
+      "Method: public void setVolume(int newVolumeLevel) – validates power state (on) and range (1–7) before assigning volumeLevel.",
+      "Methods: channelUp/channelDown – raise or lower the channel by 1 within range, only if TV is on.",
+      "Methods: volumeUp/volumeDown – raise or lower volumeLevel within range, only if TV is on.",
+      "Test class: TestTV – creates and manipulates two separate TV objects.",
+      "In main: TV tv1 = new TV(); – tv1 is a reference to a TV object with its own channel and volumeLevel.",
+      "In main: TV tv2 = new TV(); – tv2 is another independent TV object with its own state.",
+      "tv1 is set to channel 30, volume 3; tv2 is set to channel 3, volume 2, then channelUp() → 4 and volumeUp() → 3.",
+      "Final prints: show that tv1 and tv2 have different state even though they use the same class definition (object-oriented thinking: many objects, one class blueprint)."
+    ]
   }
 };
 
@@ -732,17 +801,28 @@ function loadCh9Example(key) {
   const codeEl = document.getElementById("ex9Code");
   const stepsEl = document.getElementById("ex9Steps");
   const consoleEl = document.getElementById("ex9Console");
+  const analysisEl = document.getElementById("ex9Analysis");
 
   titleEl.textContent = ex.title;
   codeEl.innerHTML = ex.code;  // use innerHTML so spans + data-role + data-explain render
   stepsEl.innerHTML = "";
   consoleEl.textContent = "";
+  analysisEl.innerHTML = "";
 
   // update button active state
   const btns = document.querySelectorAll(".ex9-btn");
   btns.forEach(b => b.classList.remove("active"));
   const activeBtn = document.querySelector('.ex9-btn[data-exkey="' + key + '"]');
   if (activeBtn) activeBtn.classList.add("active");
+
+  // populate full code analysis
+  if (ex.analysis && Array.isArray(ex.analysis)) {
+    ex.analysis.forEach(item => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      analysisEl.appendChild(li);
+    });
+  }
 }
 
 function runCh9Example() {
@@ -843,15 +923,18 @@ window.onload = function() {
         <pre class="code-block" id="ex9Code"></pre>
       </div>
 
-      <!-- Right: steps + console -->
+      <!-- Right: steps + console + analysis -->
       <div class="ex-panel">
-        <h3>Step-by-step reasoning</h3>
+        <h3>Step-by-step execution</h3>
         <ol class="ex-steps" id="ex9Steps"></ol>
 
         <button class="run-btn" onclick="runCh9Example()">▶ Run Example (simulate output)</button>
 
         <h3>Simulated console output</h3>
         <pre class="console-block" id="ex9Console"></pre>
+
+        <h3>Full code analysis</h3>
+        <ul class="ex-analysis" id="ex9Analysis"></ul>
       </div>
     </div>
   </div>
@@ -1130,7 +1213,7 @@ public class TestCircleWithCustomException {
 
 </div>
 
-<!-- Explain-this-line floating panel (now positioned near clicked line) -->
+<!-- Explain-this-line floating panel (positioned near clicked line) -->
 <div id="explainPanel">
   <div id="explainHeader">
     <span id="explainTitle">Explanation</span>
