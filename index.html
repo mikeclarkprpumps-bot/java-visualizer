@@ -225,9 +225,7 @@
   }
 
   #explainPanel {
-    position: fixed;
-    right: 10px;
-    bottom: 10px;
+    position: absolute;      /* now positioned near the clicked line */
     max-width: 340px;
     background: #ffffff;
     border-radius: 10px;
@@ -272,9 +270,6 @@
     button { font-size: 0.75rem; padding: 5px 8px; }
     .page { padding: 10px; }
     #explainPanel {
-      left: 8px;
-      right: 8px;
-      bottom: 8px;
       max-width: none;
     }
   }
@@ -377,7 +372,8 @@ const explainMap = {
   }
 };
 
-function showExplanation(key) {
+/* Position the explanation panel just BELOW the clicked hotspot (A2) */
+function showExplanation(key, anchorRect) {
   const panel = document.getElementById("explainPanel");
   const titleEl = document.getElementById("explainTitle");
   const textEl = document.getElementById("explainText");
@@ -390,7 +386,47 @@ function showExplanation(key) {
     titleEl.textContent = "Explanation";
     textEl.textContent = "Explanation coming soon for this line.";
   }
+
+  // Make panel visible but hidden to measure
   panel.style.display = "block";
+  panel.style.visibility = "hidden";
+
+  const panelWidth  = panel.offsetWidth;
+  const panelHeight = panel.offsetHeight;
+
+  const scrollX = window.scrollX || window.pageXOffset;
+  const scrollY = window.scrollY || window.pageYOffset;
+  const viewportWidth  = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const margin = 8;
+  const offset = 4; // small gap below the line
+
+  // Anchor rect from viewport -> page coords
+  let top = anchorRect.bottom + scrollY + offset; // A2: below the line
+  let left = anchorRect.left + scrollX;
+
+  // If going off right edge, shift left
+  if (left + panelWidth + margin > scrollX + viewportWidth) {
+    left = scrollX + viewportWidth - panelWidth - margin;
+  }
+  if (left < scrollX + margin) {
+    left = scrollX + margin;
+  }
+
+  // If going off bottom edge, move above the line instead
+  if (top + panelHeight + margin > scrollY + viewportHeight) {
+    top = anchorRect.top + scrollY - panelHeight - offset;
+  }
+  // If still off top (very high), clamp
+  if (top < scrollY + margin) {
+    top = scrollY + margin;
+  }
+
+  panel.style.top  = top + "px";
+  panel.style.left = left + "px";
+
+  panel.style.visibility = "visible";
 }
 
 function closeExplainPanel() {
@@ -402,7 +438,15 @@ document.addEventListener("click", function(e) {
   const el = e.target.closest("[data-explain]");
   if (el) {
     const key = el.getAttribute("data-explain");
-    showExplanation(key);
+    const rect = el.getBoundingClientRect();
+    showExplanation(key, rect);
+    e.stopPropagation();
+  } else {
+    // Clicked outside any hotspot and outside the panel -> optional auto-close
+    const panel = document.getElementById("explainPanel");
+    if (!panel.contains(e.target)) {
+      panel.style.display = "none";
+    }
   }
 });
 
@@ -1086,7 +1130,7 @@ public class TestCircleWithCustomException {
 
 </div>
 
-<!-- Explain-this-line floating panel -->
+<!-- Explain-this-line floating panel (now positioned near clicked line) -->
 <div id="explainPanel">
   <div id="explainHeader">
     <span id="explainTitle">Explanation</span>
