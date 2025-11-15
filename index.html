@@ -1,595 +1,522 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Java Visualizer – Chapters 9–12 + Code Analyzer</title>
+  <meta charset="UTF-8" />
+  <title>Java Visualizer – Chapters 9–12</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Mobile friendly -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- PWA hooks (optional but nice on Android) -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4e6cff">
 
-<!-- PWA manifest + theme color -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#4e6cff">
-
-<style>
-  :root {
-    --bg: #f3f4f9;
-    --accent: #4e6cff;
-    --code-bg: #1e1e1e;
-    --console-bg: #000;
-  }
-
-  body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-                 Consolas, "Courier New", monospace;
-    background: var(--bg);
-    margin: 0;
-  }
-
-  .page {
-    max-width: 1100px;
-    margin: 0 auto 40px;
-    padding: 16px;
-  }
-
-  h1, h2 {
-    text-align: center;
-    margin: 4px 0;
-  }
-
-  h1 {
-    font-size: 1.4rem;
-  }
-  h2 {
-    font-size: 1.05rem;
-    font-weight: 500;
-    color: #333;
-  }
-
-  /* Chapter tabs */
-  #chapterTabs {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 10px 0;
-  }
-  .chap-tab {
-    padding: 6px 10px;
-    border-radius: 999px;
-    border: 1px solid #555;
-    background: #fff;
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: background 0.2s, transform 0.1s;
-    white-space: nowrap;
-  }
-  .chap-tab.active {
-    background: var(--accent);
-    color: #fff;
-    transform: translateY(-1px);
-  }
-
-  /* Highlight controls (global, sticky) */
-  #controlsWrapper {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    background: rgba(243,244,249,0.97);
-    backdrop-filter: blur(4px);
-    padding: 8px 0 4px;
-    border-bottom: 1px solid #d0d2e0;
-  }
-
-  #controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: center;
-    margin: 4px 0;
-  }
-  button {
-    padding: 6px 10px;
-    border-radius: 999px;
-    border: 1px solid #444;
-    cursor: pointer;
-    background: #fff;
-    font-size: 0.8rem;
-  }
-  button:hover {
-    background: #e4e4e4;
-  }
-
-  .legend {
-    font-size: 0.75rem;
-    margin: 4px 0 10px;
-    text-align: center;
-  }
-  .legend span {
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin: 0 4px 4px;
-    display: inline-block;
-  }
-
-  .field { background: rgba(0, 200, 255, 0.35); }
-  .ctor  { background: rgba(0, 255, 0, 0.35); }
-  .stat  { background: rgba(255, 165, 0, 0.35); }
-  .thisc { background: rgba(255, 0, 255, 0.35); }
-  .newc  { background: rgba(255, 0, 0, 0.35); }
-  .inh   { background: rgba(155, 89, 182, 0.35); }
-  .exc   { background: rgba(231, 76, 60, 0.35); }
-
-  .chapter-section {
-    display: none;
-    animation: fadeIn 0.25s ease-in;
-  }
-  .chapter-section.active-chap {
-    display: block;
-  }
-
-  .code-title {
-    font-weight: bold;
-    margin-top: 18px;
-    margin-bottom: 6px;
-    font-size: 0.9rem;
-  }
-
-  .code-block {
-    background: var(--code-bg);
-    color: #eaeaea;
-    padding: 12px;
-    border-radius: 10px;
-    overflow-x: auto;
-    margin-bottom: 14px;
-    white-space: pre;
-    font-size: 0.8rem;
-  }
-
-  .console-block {
-    background: var(--console-bg);
-    color: #00ff7f;
-    padding: 10px;
-    border-radius: 8px;
-    white-space: pre;
-    font-size: 0.78rem;
-    min-height: 80px;
-    overflow-x: auto;
-  }
-
-  /* highlight classes */
-  .hl-field      { background: rgba(0, 200, 255, 0.35); border-radius: 4px; }
-  .hl-constructor{ background: rgba(0, 255, 0, 0.35);   border-radius: 4px; }
-  .hl-static     { background: rgba(255, 165, 0, 0.35); border-radius: 4px; }
-  .hl-this       { background: rgba(255, 0, 255, 0.35); border-radius: 4px; }
-  .hl-new        { background: rgba(255, 0, 0, 0.35);   border-radius: 4px; }
-  .hl-inherit    { background: rgba(155, 89, 182, 0.35);border-radius: 4px; }
-  .hl-exception  { background: rgba(231, 76, 60, 0.35); border-radius: 4px; }
-
-  @keyframes fadeIn {
-    from {opacity: 0; transform: translateY(4px);}
-    to   {opacity: 1; transform: translateY(0);}
-  }
-
-  /* Chapter 9 example picker layout */
-  .ex9-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    gap: 12px;
-    margin-top: 12px;
-  }
-
-  .ex9-picker {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: center;
-    margin-top: 10px;
-  }
-
-  .ex9-btn.active {
-    background: var(--accent);
-    color: #fff;
-  }
-
-  .ex-panel {
-    background: rgba(255,255,255,0.9);
-    border-radius: 10px;
-    padding: 8px 10px;
-    border: 1px solid #ddd;
-  }
-
-  .ex-panel h3 {
-    margin: 4px 0 6px;
-    font-size: 0.9rem;
-  }
-
-  .ex-steps {
-    font-size: 0.78rem;
-    padding-left: 18px;
-  }
-
-  .ex-steps li {
-    margin-bottom: 4px;
-  }
-
-  .ex-analysis {
-    font-size: 0.78rem;
-    padding-left: 18px;
-    margin-top: 6px;
-  }
-  .ex-analysis li {
-    margin-bottom: 3px;
-  }
-
-  .run-btn {
-    margin-top: 6px;
-    margin-bottom: 6px;
-  }
-
-  /* Explain-this-line styling */
-  .explainable {
-    border-bottom: 1px dotted #ffd700;
-    cursor: pointer;
-  }
-
-  #explainPanel {
-    position: absolute;      /* positioned near the clicked line */
-    max-width: 340px;
-    background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-    font-size: 0.8rem;
-    padding: 8px 10px;
-    z-index: 20;
-    display: none;
-  }
-
-  #explainHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-
-  #explainClose {
-    border: none;
-    background: transparent;
-    font-size: 1rem;
-    cursor: pointer;
-    padding: 2px 6px;
-  }
-
-  #explainText {
-    line-height: 1.3;
-  }
-
-  @media (max-width: 800px) {
-    .ex9-layout {
-      grid-template-columns: 1fr;
+  <style>
+    :root {
+      --bg: #f3f4f9;
+      --accent: #4e6cff;
+      --code-bg: #1e1e1e;
+      --console-bg: #000;
     }
-  }
 
-  @media (max-width: 600px) {
-    h1 { font-size: 1.2rem; }
-    h2 { font-size: 0.95rem; }
-    .code-block { font-size: 0.78rem; }
-    .chap-tab { font-size: 0.75rem; padding: 5px 8px; }
-    button { font-size: 0.75rem; padding: 5px 8px; }
-    .page { padding: 10px; }
-    #explainPanel {
-      max-width: none;
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+                   "Segoe UI", Consolas, "Courier New", monospace;
+      background: var(--bg);
+      margin: 0;
     }
-  }
 
-  /* Analyzer tab styles */
-  .analyzer-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    gap: 12px;
-    margin-top: 12px;
-  }
-
-  .analyzer-input {
-    width: 100%;
-    min-height: 260px;
-    font-family: Consolas, "Courier New", monospace;
-    font-size: 0.8rem;
-    padding: 10px;
-    border-radius: 10px;
-    border: 1px solid #bbb;
-    resize: vertical;
-  }
-
-  .analyzer-summary {
-    font-size: 0.8rem;
-    margin: 6px 0;
-  }
-
-  .analyzer-section-title {
-    font-weight: 600;
-    margin-top: 6px;
-    margin-bottom: 2px;
-  }
-
-  .analyzer-list {
-    font-size: 0.78rem;
-    padding-left: 18px;
-    margin-top: 0;
-  }
-
-  .analyzer-list li {
-    margin-bottom: 3px;
-  }
-
-  @media (max-width: 800px) {
-    .analyzer-layout {
-      grid-template-columns: 1fr;
+    h1, h2 {
+      text-align: center;
+      margin: 4px 0;
     }
-  }
-</style>
 
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.05rem; font-weight: 500; color: #333; }
+
+    /* Top tab bar */
+    .tab-bar {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 10px 8px 4px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(243,244,249,0.97);
+      border-bottom: 1px solid #d0d2e0;
+      backdrop-filter: blur(4px);
+    }
+
+    .chap-tab {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #555;
+      font-size: 0.8rem;
+      background: #fff;
+      cursor: pointer;
+    }
+    .chap-tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* Color legend */
+    .legend {
+      text-align: center;
+      font-size: .75rem;
+      margin: 4px 6px 10px;
+    }
+    .legend span {
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin: 2px;
+      display: inline-block;
+    }
+
+    .field { background: rgba(0,200,255,.35); }
+    .ctor  { background: rgba(0,255,0,.35); }
+    .stat  { background: rgba(255,165,0,.35); }
+    .thisc { background: rgba(255,0,255,.35); }
+    .newc  { background: rgba(255,0,0,.35); }
+    .inh   { background: rgba(155,89,182,.35); }
+    .exc   { background: rgba(231,76,60,.35); }
+
+    /* Chapter sections */
+    .chapter-section {
+      display: none;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 10px 16px 30px;
+    }
+    .active-chap {
+      display: block;
+      animation: fadeIn .25s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Code blocks */
+    .code-block {
+      background: var(--code-bg);
+      color: #eaeaea;
+      padding: 12px;
+      border-radius: 10px;
+      white-space: pre;
+      overflow-x: auto;
+      font-size: .82rem;
+    }
+
+    /* Console */
+    .console-block {
+      background: var(--console-bg);
+      color: #00ff7f;
+      padding: 10px;
+      border-radius: 8px;
+      white-space: pre;
+      font-size: .8rem;
+      min-height: 80px;
+    }
+
+    /* Buttons general */
+    button {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #333;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    button:hover { background: #ececec; }
+
+    /* Example pickers */
+    .example-picker {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    .ex9-btn.active,
+    .ex10-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* Layout for steps/diagram and analyzer */
+    .two-col-layout {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    @media(max-width:800px) {
+      .two-col-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .ex-panel {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+    }
+
+    /* Multi-code layout for Chapter 10 */
+    .code-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    @media(max-width:900px) {
+      .code-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Explainable hotspots */
+    .explainable {
+      border-bottom: 1px dotted #ffd700;
+      cursor: pointer;
+    }
+
+    .popup-panel {
+      position: absolute;
+      display: none;
+      max-width: 280px;
+      background: #fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: .8rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,.25);
+      z-index: 30;
+    }
+
+    /* Analyzer */
+    #analyzeInput {
+      width: 100%;
+      min-height: 200px;
+      font-family: Consolas, monospace;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: .85rem;
+      box-sizing: border-box;
+    }
+
+    .analyzer-summary {
+      padding: 8px 6px;
+      background: #eef2ff;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: .85rem;
+    }
+
+    .analyzer-section-title {
+      margin-top: 10px;
+      margin-bottom: 4px;
+      font-weight: 600;
+      font-size: .85rem;
+    }
+
+    .analyzer-list {
+      font-size: .82rem;
+      padding-left: 18px;
+    }
+
+    /* Highlight classes for analyzer preview */
+    .hl-field      { background: rgba(0,200,255,.35); }
+    .hl-static     { background: rgba(255,165,0,.35); }
+    .hl-new        { background: rgba(255,0,0,.35); }
+    .hl-this       { background: rgba(255,0,255,.35); }
+    .hl-inherit    { background: rgba(155,89,182,.35); }
+    .hl-exception  { background: rgba(231,76,60,.35); }
+  </style>
+</head>
+
+<body>
+
+<!-- ============================================================
+   TOP NAV TABS
+============================================================ -->
+<div class="tab-bar">
+  <div id="tab9"  class="chap-tab active" onclick="showChapter(9)">Chapter 9</div>
+  <div id="tab10" class="chap-tab" onclick="showChapter(10)">Chapter 10</div>
+  <div id="tab11" class="chap-tab" onclick="showChapter(11)">Chapter 11</div>
+  <div id="tab12" class="chap-tab" onclick="showChapter(12)">Chapter 12</div>
+  <div id="tabA"  class="chap-tab" onclick="showChapter('A')">Analyze Code</div>
+</div>
+
+<!-- COLOR LEGEND -->
+<div class="legend">
+  <span class="field">Fields</span>
+  <span class="ctor">Constructors</span>
+  <span class="stat">Static (class-level)</span>
+  <span class="thisc">this references</span>
+  <span class="newc">new object creation</span>
+  <span class="inh">Inheritance / super</span>
+  <span class="exc">Exceptions</span>
+</div>
+
+<!-- EXPLANATION POPUP -->
+<div id="explainPanel" class="popup-panel">
+  <div id="explainText"></div>
+</div>
+
+<!-- ============================================================
+   CHAPTER 9
+============================================================ -->
+<div id="chapter9" class="chapter-section active-chap">
+  <h1>Chapter 9 — Objects &amp; Classes</h1>
+  <p style="text-align:center;">
+    Select an example to visualize the code with color roles, hotspots, and step-by-step execution.
+  </p>
+
+  <div class="example-picker">
+    <button class="ex9-btn" id="btn_CircleWithStatic" onclick="loadCH9Example('CircleWithStatic')">
+      CircleWithStaticMembers
+    </button>
+    <button class="ex9-btn" id="btn_TV" onclick="loadCH9Example('TV')">
+      TV Class
+    </button>
+    <button class="ex9-btn" id="btn_PassObject" onclick="loadCH9Example('PassObject')">
+      TestPassObject
+    </button>
+  </div>
+
+  <div id="ex9Code" class="code-block">
+    <!-- Filled by JS -->
+  </div>
+
+  <h2>Simulated Console Output</h2>
+  <pre id="ex9Console" class="console-block"></pre>
+
+  <h2>Execution Steps &amp; Memory Diagram</h2>
+  <div class="two-col-layout">
+    <div class="ex-panel">
+      <div id="ex9StepText">(Select an example and click "Next Step".)</div>
+      <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+        <button onclick="prevStep('9')">Previous Step</button>
+        <button onclick="nextStep('9')">Next Step</button>
+      </div>
+    </div>
+    <div class="ex-panel">
+      <div id="ex9Diagram">(Memory diagram will appear here.)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+   CHAPTER 10 — FULLY WIRED
+============================================================ -->
+<div id="chapter10" class="chapter-section">
+  <h1>Chapter 10 — Object-Oriented Thinking</h1>
+  <p style="text-align:center;">
+    Choose a test program. The Visualizer automatically pairs it with its core class and
+    shows both code files, simulated output, and a memory diagram.
+  </p>
+
+  <div class="example-picker">
+    <button class="ex10-btn" id="btn10_Loan" onclick="loadCH10Example('Loan')">
+      Loan / TestLoanClass
+    </button>
+    <button class="ex10-btn" id="btn10_BMI" onclick="loadCH10Example('BMI')">
+      BMI / UseBMIClass
+    </button>
+    <button class="ex10-btn" id="btn10_Course" onclick="loadCH10Example('Course')">
+      Course / TestCourse
+    </button>
+    <button class="ex10-btn" id="btn10_Stack" onclick="loadCH10Example('Stack')">
+      StackOfIntegers / TestStackOfIntegers
+    </button>
+    <button class="ex10-btn" id="btn10_Palindrome" onclick="loadCH10Example('Palindrome')">
+      PalindromeIgnoreNonAlphanumeric
+    </button>
+    <button class="ex10-btn" id="btn10_LargeFact" onclick="loadCH10Example('LargeFact')">
+      LargeFactorial
+    </button>
+  </div>
+
+  <!-- Core class + Test class side by side -->
+  <div class="code-grid-2">
+    <div>
+      <h2 style="text-align:left; font-size:.9rem;">Core Class</h2>
+      <div id="ex10CoreCode" class="code-block"></div>
+    </div>
+    <div>
+      <h2 style="text-align:left; font-size:.9rem;">Test / Driver</h2>
+      <div id="ex10TestCode" class="code-block"></div>
+    </div>
+  </div>
+
+  <h2>Simulated Console Output</h2>
+  <pre id="ex10Console" class="console-block"></pre>
+
+  <h2>Execution Steps &amp; Memory Diagram</h2>
+  <div class="two-col-layout">
+    <div class="ex-panel">
+      <div id="ex10StepText">(Select an example and click "Next Step".)</div>
+      <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+        <button onclick="prevStep('10')">Previous Step</button>
+        <button onclick="nextStep('10')">Next Step</button>
+      </div>
+    </div>
+    <div class="ex-panel">
+      <div id="ex10Diagram">(Memory diagram will appear here.)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+   CHAPTER 11 (placeholder)
+============================================================ -->
+<div id="chapter11" class="chapter-section">
+  <h1>Chapter 11 — Inheritance &amp; Polymorphism</h1>
+  <p style="text-align:center;">
+    This tab is ready for your Chapter 11 examples and visual tools.
+  </p>
+</div>
+
+<!-- ============================================================
+   CHAPTER 12 (placeholder)
+============================================================ -->
+<div id="chapter12" class="chapter-section">
+  <h1>Chapter 12 — Exception Handling</h1>
+  <p style="text-align:center;">
+    This tab is ready for your Chapter 12 examples and exception demos.
+  </p>
+</div>
+
+<!-- ============================================================
+   ANALYZE ANY CODE (Analyzer Mode)
+============================================================ -->
+<div id="chapterA" class="chapter-section">
+  <h1>Analyze Any Java Code</h1>
+  <p>
+    Paste Java code below, then click <b>Analyze Code</b> to get a highlighted
+    view and a structured breakdown (classes, fields, constructors, methods,
+    static members, <code>new</code>, <code>this</code>, inheritance, exceptions).
+  </p>
+
+  <textarea id="analyzeInput" placeholder="Paste Java code here..."></textarea>
+  <div style="margin-top:8px;">
+    <button onclick="analyzePastedCode()">Analyze Code</button>
+  </div>
+
+  <div class="two-col-layout" style="margin-top:16px;">
+    <div class="ex-panel">
+      <h3>2. Highlighted code (by concept)</h3>
+      <pre id="analyzeCodeView" class="code-block">
+(Paste your code above and click "Analyze Code" to see color-coded highlights here.)</pre>
+    </div>
+
+    <div class="ex-panel">
+      <h3>3. Structured breakdown</h3>
+      <div id="analyzeSummary" class="analyzer-summary">
+        (Nothing analyzed yet. Paste code and click “Analyze Code”.)
+      </div>
+
+      <div class="analyzer-section-title">Classes</div>
+      <ul id="analyzeClasses" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">Interfaces</div>
+      <ul id="analyzeInterfaces" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">Fields (instance or static)</div>
+      <ul id="analyzeFields" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">Constructors</div>
+      <ul id="analyzeConstructors" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">Methods</div>
+      <ul id="analyzeMethods" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">Static members (fields or methods)</div>
+      <ul id="analyzeStatic" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">Object creation (new)</div>
+      <ul id="analyzeNew" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">this references</div>
+      <ul id="analyzeThis" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">super / inheritance references</div>
+      <ul id="analyzeSuper" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">extends / implements usage</div>
+      <ul id="analyzeInherit" class="analyzer-list"></ul>
+
+      <div class="analyzer-section-title">Exceptions (try / catch / throw / throws)</div>
+      <ul id="analyzeExceptions" class="analyzer-list"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+   SCRIPTS
+============================================================ -->
 <script>
-/* ====== GLOBAL TAB SWITCHING ====== */
-function showChapter(chapId) {
-  const sections = document.getElementsByClassName("chapter-section");
-  const tabs = document.getElementsByClassName("chap-tab");
-  for (let s of sections) s.classList.remove("active-chap");
-  for (let t of tabs) t.classList.remove("active");
-  document.getElementById(chapId).classList.add("active-chap");
-  const tabEl = document.querySelector('.chap-tab[data-target="' + chapId + '"]');
-  if (tabEl) tabEl.classList.add("active");
-}
+  // ------------------------------------------------------------
+  // TAB SWITCHING (Ch 9–12 + Analyzer)
+  // ------------------------------------------------------------
+  function showChapter(ch) {
+    document.querySelectorAll(".chap-tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".chapter-section").forEach(s => s.classList.remove("active-chap"));
 
-/* ====== HIGHLIGHT TOGGLE HELPERS ====== */
-function toggleRole(role, className) {
-  const spans = document.querySelectorAll('[data-role="' + role + '"]');
-  spans.forEach(s => s.classList.toggle(className));
-}
-
-function toggleFields()      { toggleRole("field", "hl-field"); }
-function toggleConstructors(){ toggleRole("constructor", "hl-constructor"); }
-function toggleStatic()      { toggleRole("static", "hl-static"); }
-function toggleThisKeyword() { toggleRole("this", "hl-this"); }
-function toggleNewKeyword()  { toggleRole("new", "hl-new"); }
-function toggleInheritance() {
-  ["extends", "super", "override"].forEach(role => {
-    toggleRole(role, "hl-inherit");
-  });
-}
-function toggleExceptions() {
-  ["try", "catch", "throw", "throws"].forEach(role => {
-    toggleRole(role, "hl-exception");
-  });
-}
-
-/* ====== EXPLAIN-THIS-LINE MAP ====== */
-const explainMap = {
-  // Chapter 9 – SimpleCircle
-  "ch9_simple_radiusField": {
-    title: "Field: radius",
-    text: "This declares an instance field. Each SimpleCircle object has its own copy of radius, which stores the circle’s size."
-  },
-  "ch9_simple_ctor_noarg": {
-    title: "No-arg constructor",
-    text: "This constructor creates a SimpleCircle with a default radius of 1. It runs automatically when you call new SimpleCircle()."
-  },
-  "ch9_simple_ctor_param": {
-    title: "Constructor with parameter",
-    text: "This constructor lets you create a circle with any radius. The parameter newRadius is copied into the object’s radius field."
-  },
-
-  // Chapter 9 – Static circle
-  "ch9_static_numberOfObjects": {
-    title: "Static field: numberOfObjects",
-    text: "numberOfObjects is static, so it belongs to the class, not to a single object. All CircleWithStaticMembers objects share this counter."
-  },
-  "ch9_static_getNumber": {
-    title: "Static method: getNumberOfObjects",
-    text: "Because the method is static, it can be called as CircleWithStaticMembers.getNumberOfObjects() without creating an object."
-  },
-
-  // Chapter 9 – Pass object
-  "ch9_pass_param_c": {
-    title: "Parameter c refers to the same object",
-    text: "The parameter c is a reference to the SAME Circle object passed in. Changes to c.radius affect the original object in main."
-  },
-
-  // Chapter 9 – TV
-  "ch9_tv_field_on": {
-    title: "Field: power state",
-    text: "The on field tracks whether the TV is powered on. Most methods check this before changing channel or volume."
-  },
-
-  // Chapter 11 – inheritance
-  "ch11_circle_extends": {
-    title: "extends SimpleGeometricObject",
-    text: "This line makes CircleFromSimpleGeometricObject a child class (subclass) of SimpleGeometricObject, inheriting its fields and methods."
-  },
-  "ch11_circle_super_ctor": {
-    title: "Calling super(color, filled)",
-    text: "super(color, filled) calls the parent class constructor so it can initialize inherited fields like color and filled."
-  },
-
-  // Chapter 12 – exceptions
-  "ch12_try": {
-    title: "try block",
-    text: "Code that might throw an exception is placed inside the try block. If an exception occurs, control jumps to the matching catch."
-  },
-  "ch12_throw_zero": {
-    title: "Throwing an exception",
-    text: "This explicitly throws an ArithmeticException if number2 is zero. The catch block below will handle this error."
-  },
-  "ch12_catch": {
-    title: "catch (ArithmeticException ex)",
-    text: "If an ArithmeticException is thrown in the try block, this catch block runs and handles the error instead of crashing the program."
-  }
-};
-
-/* Position the explanation panel just BELOW the clicked hotspot (A2) */
-function showExplanation(key, anchorRect) {
-  const panel = document.getElementById("explainPanel");
-  const titleEl = document.getElementById("explainTitle");
-  const textEl = document.getElementById("explainText");
-
-  const info = explainMap[key];
-  if (info) {
-    titleEl.textContent = info.title;
-    textEl.textContent = info.text;
-  } else {
-    titleEl.textContent = "Explanation";
-    textEl.textContent = "Explanation coming soon for this line.";
+    document.getElementById("tab" + ch).classList.add("active");
+    const chapId = (ch === 'A') ? 'chapterA' : ('chapter' + ch);
+    document.getElementById(chapId).classList.add("active-chap");
   }
 
-  panel.style.display = "block";
-  panel.style.visibility = "hidden";
-
-  const panelWidth  = panel.offsetWidth;
-  const panelHeight = panel.offsetHeight;
-
-  const scrollX = window.scrollX || window.pageXOffset;
-  const scrollY = window.scrollY || window.pageYOffset;
-  const viewportWidth  = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-
-  const margin = 8;
-  const offset = 4;
-
-  let top = anchorRect.bottom + scrollY + offset;
-  let left = anchorRect.left + scrollX;
-
-  if (left + panelWidth + margin > scrollX + viewportWidth) {
-    left = scrollX + viewportWidth - panelWidth - margin;
-  }
-  if (left < scrollX + margin) {
-    left = scrollX + margin;
-  }
-
-  if (top + panelHeight + margin > scrollY + viewportHeight) {
-    top = anchorRect.top + scrollY - panelHeight - offset;
-  }
-  if (top < scrollY + margin) {
-    top = scrollY + margin;
-  }
-
-  panel.style.top  = top + "px";
-  panel.style.left = left + "px";
-
-  panel.style.visibility = "visible";
-}
-
-function closeExplainPanel() {
-  document.getElementById("explainPanel").style.display = "none";
-}
-
-/* Global click handler for explainable spans */
-document.addEventListener("click", function(e) {
-  const el = e.target.closest("[data-explain]");
-  if (el) {
-    const key = el.getAttribute("data-explain");
-    const rect = el.getBoundingClientRect();
-    showExplanation(key, rect);
-    e.stopPropagation();
-  } else {
+  // ------------------------------------------------------------
+  // HOTSPOTS (tap-to-explain)
+  // ------------------------------------------------------------
+  document.addEventListener("click", e => {
     const panel = document.getElementById("explainPanel");
-    if (!panel.contains(e.target)) {
+
+    if (e.target.classList.contains("explainable")) {
+      const msg = e.target.dataset.explain || "No explanation.";
+      const rect = e.target.getBoundingClientRect();
+
+      document.getElementById("explainText").textContent = msg;
+      panel.style.display = "block";
+
+      // Position just below tapped word
+      panel.style.left = rect.left + "px";
+      panel.style.top = (rect.bottom + window.scrollY + 4) + "px";
+    } else if (!panel.contains(e.target)) {
       panel.style.display = "none";
     }
-  }
-});
+  });
 
-/* ====== CHAPTER 9 EXAMPLE DATA (with analysis) ====== */
-const ch9Examples = {
-  simpleCircle: {
-    title: "SimpleCircle – basic objects and methods",
-    code: 
-`// SimpleCircle.java
-public class SimpleCircle {
-  <span data-role="field"
-        data-explain="ch9_simple_radiusField"
-        class="explainable">double radius;</span>
+  // ------------------------------------------------------------
+  // CHAPTER 9 EXAMPLE DATA (code + console + steps + diagram)
+  // ------------------------------------------------------------
+  const chapter9Examples = {
+    "CircleWithStatic": {
+      title: "CircleWithStaticMembers.java",
+      code: `
+public class <span class="stat explainable" data-explain="Static field shared across ALL objects">CircleWithStaticMembers</span> {
+  double <span class="field explainable" data-explain="Instance field — each object gets its own radius">radius</span>;
+  static int <span class="stat explainable" data-explain="Counts how many Circle objects have ever been created">numberOfObjects</span> = 0;
 
-  <span data-role="constructor"
-        data-explain="ch9_simple_ctor_noarg"
-        class="explainable">SimpleCircle()</span> {
-    radius = 1;
-  }
-
-  <span data-role="constructor"
-        data-explain="ch9_simple_ctor_param"
-        class="explainable">SimpleCircle(double newRadius)</span> {
-    <span data-role="this">radius</span> = newRadius;
-  }
-
-  double getArea() {
-    return radius * radius * Math.PI;
-  }
-
-  double getPerimeter() {
-    return 2 * radius * Math.PI;
-  }
-}
-
-// TestSimpleCircle.java
-public class TestSimpleCircle {
-  public static void main(String[] args) {
-    SimpleCircle c1 = <span data-role="new">new SimpleCircle()</span>;
-    SimpleCircle c2 = <span data-role="new">new SimpleCircle(5)</span>;
-    System.out.println("c1 radius = " + c1.radius +
-                       " area = " + c1.getArea());
-    System.out.println("c2 radius = " + c2.radius +
-                       " area = " + c2.getArea());
-  }
-}`,
-    steps: [
-      "The SimpleCircle class defines a field radius and two constructors.",
-      "In main, c1 is created with the no-arg constructor → radius = 1.",
-      "c2 is created with radius 5 using the second constructor.",
-      "getArea() uses radius * radius * Math.PI.",
-      "Two lines are printed: one for c1, one for c2, each showing radius and area."
-    ],
-    console:
-`c1 radius = 1.0 area = 3.141592653589793
-c2 radius = 5.0 area = 78.53981633974483`,
-    analysis: [
-      "Class: SimpleCircle – basic model of a circle (Liang Ch 9: defining classes).",
-      "Field: double radius – instance field, each SimpleCircle object has its own radius value (heap).",
-      "Constructor #1: SimpleCircle() – no-arg constructor that sets the default radius to 1.",
-      "Constructor #2: SimpleCircle(double newRadius) – custom constructor that copies parameter newRadius into the instance field radius.",
-      "Method: double getArea() – instance method; computes area using the current radius (radius² × π).",
-      "Method: double getPerimeter() – instance method; computes circumference 2 × radius × π.",
-      "Test class: TestSimpleCircle – contains main(String[] args) entry point.",
-      "In main: SimpleCircle c1 = new SimpleCircle(); – creates a new object on the heap with radius = 1.",
-      "In main: SimpleCircle c2 = new SimpleCircle(5); – creates a second object with radius = 5.",
-      "Each variable c1 and c2 is a reference variable on the stack that points to a different SimpleCircle object on the heap.",
-      "System.out.println(...) – uses string concatenation to print both the radius and the computed area."
-    ]
-  },
-
-  staticCircle: {
-    title: "CircleWithStaticMembers – static field shared by all objects",
-    code:
-`// CircleWithStaticMembers.java
-public class CircleWithStaticMembers {
-  <span data-role="field">double radius;</span>
-  <span data-role="static"
-        data-explain="ch9_static_numberOfObjects"
-        class="explainable">static int numberOfObjects = 0;</span>
-
-  <span data-role="constructor">CircleWithStaticMembers()</span> {
-    radius = 1.0;
+  <span class="ctor explainable" data-explain="Constructor with no parameters">CircleWithStaticMembers</span>() {
+    <span class="thisc explainable" data-explain="Refers to the object's own instance field">radius</span> = 1.0;
     numberOfObjects++;
   }
 
-  <span data-role="constructor">CircleWithStaticMembers(double newRadius)</span> {
+  <span class="ctor explainable" data-explain="Constructor with one parameter">CircleWithStaticMembers</span>(double newRadius) {
     radius = newRadius;
     numberOfObjects++;
   }
 
-  <span data-role="static"
-        data-explain="ch9_static_getNumber"
-        class="explainable">static int getNumberOfObjects()</span> {
+  static int <span class="stat explainable" data-explain="Static method called on the class, not on an object">getNumberOfObjects</span>() {
     return numberOfObjects;
   }
 
@@ -597,576 +524,321 @@ public class CircleWithStaticMembers {
     return radius * radius * Math.PI;
   }
 }
-
-// TestCircleWithStaticMembers.java
-public class TestCircleWithStaticMembers {
-  public static void main(String[] args) {
-    System.out.println("Before creating objects");
-    System.out.println("numberOfObjects = " +
-      CircleWithStaticMembers.numberOfObjects);
-
-    CircleWithStaticMembers c1 =
-      <span data-role="new">new CircleWithStaticMembers()</span>;
-    System.out.println("\\nAfter creating c1");
-    System.out.println("c1 radius = " + c1.radius);
-    System.out.println("numberOfObjects = " +
-      CircleWithStaticMembers.numberOfObjects);
-
-    CircleWithStaticMembers c2 =
-      <span data-role="new">new CircleWithStaticMembers(5)</span>;
-    System.out.println("\\nAfter creating c2");
-    System.out.println("c2 radius = " + c2.radius);
-    System.out.println("numberOfObjects = " +
-      CircleWithStaticMembers.numberOfObjects);
-  }
-}`,
-    steps: [
-      "numberOfObjects is static, so it is shared by all CircleWithStaticMembers objects.",
-      "Before any object is created, numberOfObjects = 0.",
-      "Creating c1 with the no-arg constructor sets radius = 1.0 and increments numberOfObjects to 1.",
-      "Creating c2 with radius 5 sets radius = 5.0 and increments numberOfObjects to 2.",
-      "Accessing CircleWithStaticMembers.numberOfObjects shows the same value (2) from anywhere."
-    ],
-    console:
-`Before creating objects
-numberOfObjects = 0
+`,
+      console: `Before creating objects
+The number of Circle objects is 0
 
 After creating c1
-c1 radius = 1.0
-numberOfObjects = 1
+c1: radius (1.0) and numberOfObjects (1)
 
-After creating c2
-c2 radius = 5.0
-numberOfObjects = 2`,
-    analysis: [
-      "Class: CircleWithStaticMembers – circle model that also tracks how many circle objects have been created.",
-      "Field: double radius – instance field; each circle object has its own radius value.",
-      "Static field: static int numberOfObjects = 0 – belongs to the class itself, stored in the method area (one shared copy).",
-      "Constructor #1: CircleWithStaticMembers() – no-arg constructor; sets radius to 1.0 and increments numberOfObjects.",
-      "Constructor #2: CircleWithStaticMembers(double newRadius) – sets radius to newRadius and increments numberOfObjects.",
-      "Static method: static int getNumberOfObjects() – can be called without any object: CircleWithStaticMembers.getNumberOfObjects().",
-      "Instance method: double getArea() – computes the area of the current circle object using its radius.",
-      "Test class: TestCircleWithStaticMembers – main method that drives the demo.",
-      "Before any object is created, CircleWithStaticMembers.numberOfObjects is 0.",
-      "Creating c1 – constructor increments numberOfObjects to 1; c1.radius is 1.0.",
-      "Creating c2 – constructor increments numberOfObjects to 2; c2.radius is 5.0.",
-      "Access pattern: numberOfObjects is accessed via the class name (CircleWithStaticMembers.numberOfObjects), which is the recommended style for static fields (Liang Ch 9: static members)."
-    ]
-  },
+After creating c2 and modifying c1
+c1: radius (9.0) and numberOfObjects (2)
+c2: radius (5.0) and numberOfObjects (2)`,
+      steps: [
+        "1. Program starts in main() of TestCircleWithStaticMembers.",
+        "2. Before creating any objects, the static field numberOfObjects is 0.",
+        "3. The statement 'CircleWithStaticMembers c1 = new CircleWithStaticMembers();' creates the first object.",
+        "4. The no-arg constructor runs, sets radius = 1.0, and increments numberOfObjects to 1.",
+        "5. The program prints c1’s radius and the static counter (which is 1).",
+        "6. Then 'CircleWithStaticMembers c2 = new CircleWithStaticMembers(5);' creates a second object.",
+        "7. The constructor with a parameter sets c2.radius = 5.0 and increments numberOfObjects to 2.",
+        "8. The code changes c1.radius = 9.0 (only c1’s radius, not c2’s).",
+        "9. Both c1 and c2 now see numberOfObjects == 2, because that field is shared by the class."
+      ],
+      diagram: `<pre>Stack
+  c1 → obj#1 (CircleWithStaticMembers)
+  c2 → obj#2 (CircleWithStaticMembers)
 
-  passObject: {
-    title: "TestPassObject – passing objects to methods",
-    code:
-`// Circle.java (simplified)
-class Circle {
-  <span data-role="field">double radius;</span>
+Heap
+  obj#1: radius = 9.0
+  obj#2: radius = 5.0
 
-  <span data-role="constructor">Circle(double newRadius)</span> {
-    radius = newRadius;
-  }
+Static Area (shared by the class)
+  CircleWithStaticMembers.numberOfObjects = 2</pre>`
+    },
 
-  double getArea() {
-    return radius * radius * Math.PI;
-  }
-}
+    "TV": {
+      title: "TV.java",
+      code: `
+public class <span class="explainable" data-explain="A simple class modeling a TV">TV</span> {
+  int <span class="field explainable" data-explain="Channel number">channel</span> = 1;
+  int <span class="field explainable" data-explain="Volume level">volumeLevel</span> = 1;
+  boolean <span class="field explainable" data-explain="Power state">on</span> = false;
 
-// TestPassObject.java
-public class TestPassObject {
-  public static void main(String[] args) {
-    Circle myCircle = <span data-role="new">new Circle(1)</span>;
-    int n = 5;
-    printAreas(myCircle, n);
+  <span class="ctor explainable" data-explain="Constructor — creates a TV">TV</span>() {}
 
-    System.out.println("\\nAfter call, radius is " +
-      myCircle.radius);
-  }
-
-  public static void printAreas(
-      <span data-explain="ch9_pass_param_c" class="explainable">Circle c</span>,
-      int times) {
-    System.out.println("Radius    \\tArea");
-    while (times >= 1) {
-      System.out.println(c.radius + "    \\t" + c.getArea());
-      c.radius++;
-      times--;
-    }
-  }
-}`,
-    steps: [
-      "A Circle object myCircle is created with initial radius = 1.",
-      "printAreas(myCircle, 5) is called; parameter c refers to the SAME Circle object.",
-      "Inside the loop, the current radius and area are printed.",
-      "Then c.radius++ increases the radius of the same object each time.",
-      "After the loop, myCircle.radius has been incremented several times.",
-      "Back in main, printing myCircle.radius shows the UPDATED radius."
-    ],
-    console:
-`Radius    	Area
-1.0       	3.141592653589793
-2.0       	12.566370614359172
-3.0       	28.274333882308138
-4.0       	50.26548245743669
-5.0       	78.53981633974483
-
-After call, radius is 6.0`,
-    analysis: [
-      "Class: Circle – simple class with one instance field radius and a constructor Circle(double newRadius).",
-      "Field: double radius – instance field that holds the radius for each Circle object.",
-      "Constructor: Circle(double newRadius) – copies the parameter newRadius into this.radius.",
-      "Method: double getArea() – instance method returning the circle’s area using the current radius.",
-      "Test class: TestPassObject – demonstrates passing objects as parameters (Liang Ch 9: passing objects to methods).",
-      "In main: Circle myCircle = new Circle(1); – creates one Circle object on the heap with radius = 1.",
-      "Variable: int n = 5; – primitive variable on the stack, storing the number of iterations.",
-      "Call: printAreas(myCircle, n); – passes a REFERENCE to the Circle object and a copy of n’s value (5).",
-      "Parameter: Circle c – reference parameter; c and myCircle both point to the SAME Circle object on the heap.",
-      "Parameter: int times – copy of n (primitive parameter); changes to times do NOT affect n in main.",
-      "Loop: while (times >= 1) – repeats until times becomes 0.",
-      "Inside loop: System.out.println(c.radius + \"\\t\" + c.getArea()); – prints current radius and area.",
-      "Inside loop: c.radius++; – directly modifies the radius field of the shared Circle object.",
-      "After loop: myCircle.radius is now larger (incremented each iteration), showing that passing objects allows the method to mutate shared state.",
-      "Final print in main: shows that changes made through parameter c are visible through myCircle as well."
-    ]
-  },
-
-  tv: {
-    title: "TV – encapsulating state and behavior",
-    code:
-`// TV.java
-public class TV {
-  <span data-role="field">int channel = 1;</span>
-  <span data-role="field">int volumeLevel = 1;</span>
-  <span data-role="field"
-        data-explain="ch9_tv_field_on"
-        class="explainable">boolean on = false;</span>
-
-  <span data-role="constructor">public TV()</span> {
-  }
-
-  public void turnOn() {
+  void <span class="explainable" data-explain="Turns the TV on">turnOn</span>() {
     on = true;
   }
 
-  public void turnOff() {
+  void <span class="explainable" data-explain="Turns the TV off">turnOff</span>() {
     on = false;
   }
 
-  public void setChannel(int newChannel) {
+  void <span class="explainable" data-explain="Sets the channel if the TV is on">setChannel</span>(int newChannel) {
     if (on && newChannel >= 1 && newChannel <= 120)
       channel = newChannel;
   }
-
-  public void setVolume(int newVolumeLevel) {
-    if (on && newVolumeLevel >= 1 && newVolumeLevel <= 7)
-      volumeLevel = newVolumeLevel;
-  }
-
-  public void channelUp() {
-    if (on && channel < 120)
-      channel++;
-  }
-
-  public void channelDown() {
-    if (on && channel > 1)
-      channel--;
-  }
-
-  public void volumeUp() {
-    if (on && volumeLevel < 7)
-      volumeLevel++;
-  }
-
-  public void volumeDown() {
-    if (on && volumeLevel > 1)
-      volumeLevel--;
-  }
 }
+`,
+      console: `TV on...
+Channel set to 25`,
+      steps: [
+        "1. A TV object is created; channel = 1, volumeLevel = 1, on = false by default.",
+        "2. When turnOn() is called, the on field becomes true.",
+        "3. setChannel(25) checks that the TV is on and that 25 is between 1 and 120.",
+        "4. Because both conditions are true, channel is updated to 25.",
+        "5. If on were false or the channel were invalid, channel would not change."
+      ],
+      diagram: `<pre>Stack
+  myTV → obj#1 (TV)
 
-// TestTV.java
-public class TestTV {
+Heap
+  obj#1:
+    channel      = 25
+    volumeLevel  = 1
+    on           = true</pre>`
+    },
+
+    "PassObject": {
+      title: "TestPassObject.java",
+      code: `
+public class TestPassObject {
   public static void main(String[] args) {
-    TV tv1 = <span data-role="new">new TV()</span>;
-    tv1.turnOn();
-    tv1.setChannel(30);
-    tv1.setVolume(3);
+    <span class="field explainable" data-explain="c references a Circle object">Circle c</span> = 
+      <span class="newc explainable" data-explain="Creates an object in the heap">new</span> Circle(1);
 
-    TV tv2 = <span data-role="new">new TV()</span>;
-    tv2.turnOn();
-    tv2.setChannel(3);
-    tv2.setVolume(2);
-    tv2.channelUp();
-    tv2.volumeUp();
+    <span class="explainable" data-explain="Method receives object reference (not a copy of the object)">printArea</span>(c);
 
-    System.out.println("tv1 channel = " + tv1.channel +
-      " volume = " + tv1.volumeLevel);
-    System.out.println("tv2 channel = " + tv2.channel +
-      " volume = " + tv2.volumeLevel);
-  }
-}`,
-    steps: [
-      "The TV class has fields for channel, volumeLevel, and power state (on/off).",
-      "Public methods turnOn/turnOff, setChannel, and setVolume control the state.",
-      "In main, tv1 is turned on, set to channel 30 and volume 3.",
-      "tv2 is turned on, set to channel 3 and volume 2, then channelUp() and volumeUp() are called.",
-      "Each TV object maintains its own channel and volume.",
-      "The final printout shows different state for tv1 and tv2."
-    ],
-    console:
-`tv1 channel = 30 volume = 3
-tv2 channel = 4 volume = 3`,
-    analysis: [
-      "Class: TV – models a television as an object with state (fields) and behavior (methods).",
-      "Fields: int channel, int volumeLevel, boolean on – instance fields that store the current state for each TV object.",
-      "Field defaults: channel = 1, volumeLevel = 1, on = false – initial values when a TV is constructed.",
-      "Constructor: public TV() – no-arg constructor; relies on field initializers to set default state.",
-      "Method: public void turnOn() – sets on = true; TV is now powered.",
-      "Method: public void turnOff() – sets on = false; channel/volume changes are ignored when off.",
-      "Method: public void setChannel(int newChannel) – validates power state (on) and range (1–120) before assigning channel.",
-      "Method: public void setVolume(int newVolumeLevel) – validates power state (on) and range (1–7) before assigning volumeLevel.",
-      "Methods: channelUp/channelDown – raise or lower the channel by 1 within range, only if TV is on.",
-      "Methods: volumeUp/volumeDown – raise or lower volumeLevel within range, only if TV is on.",
-      "Test class: TestTV – creates and manipulates two separate TV objects.",
-      "In main: TV tv1 = new TV(); – tv1 is a reference to a TV object with its own channel and volumeLevel.",
-      "In main: TV tv2 = new TV(); – tv2 is another independent TV object with its own state.",
-      "tv1 is set to channel 30, volume 3; tv2 is set to channel 3, volume 2, then channelUp() → 4 and volumeUp() → 3.",
-      "Final prints: show that tv1 and tv2 have different state even though they use the same class definition (object-oriented thinking: many objects, one class blueprint)."
-    ]
-  }
-};
+    <span class="explainable" data-explain="Modifies the actual Circle object">c.radius</span> = 10;
 
-let currentCh9Example = "simpleCircle";
-
-function loadCh9Example(key) {
-  currentCh9Example = key;
-  const ex = ch9Examples[key];
-  const titleEl = document.getElementById("ex9Title");
-  const codeEl = document.getElementById("ex9Code");
-  const stepsEl = document.getElementById("ex9Steps");
-  const consoleEl = document.getElementById("ex9Console");
-  const analysisEl = document.getElementById("ex9Analysis");
-
-  titleEl.textContent = ex.title;
-  codeEl.innerHTML = ex.code;
-  stepsEl.innerHTML = "";
-  consoleEl.textContent = "";
-  analysisEl.innerHTML = "";
-
-  const btns = document.querySelectorAll(".ex9-btn");
-  btns.forEach(b => b.classList.remove("active"));
-  const activeBtn = document.querySelector('.ex9-btn[data-exkey="' + key + '"]');
-  if (activeBtn) activeBtn.classList.add("active");
-
-  if (ex.analysis && Array.isArray(ex.analysis)) {
-    ex.analysis.forEach(item => {
-      const li = document.createElement("li");
-      li.textContent = item;
-      analysisEl.appendChild(li);
-    });
-  }
-}
-
-function runCh9Example() {
-  const ex = ch9Examples[currentCh9Example];
-  const stepsEl = document.getElementById("ex9Steps");
-  const consoleEl = document.getElementById("ex9Console");
-  stepsEl.innerHTML = "";
-
-  ex.steps.forEach(step => {
-    const li = document.createElement("li");
-    li.textContent = step;
-    stepsEl.appendChild(li);
-  });
-  consoleEl.textContent = ex.console;
-}
-
-/* ====== CODE ANALYZER (pasted code) ====== */
-function analyzePastedCode() {
-  const src = document.getElementById("analyzeInput").value || "";
-  const lines = src.split(/\r?\n/);
-
-  const classes = [];
-  const interfaces = [];
-  const fields = [];
-  const constructors = [];
-  const methods = [];
-  const staticMembers = [];
-  const news = [];
-  const thisRefs = [];
-  const superRefs = [];
-  const inheritanceInfo = [];
-  const exceptions = [];
-
-  let currentClass = null;
-
-  const stripComments = (line) => line.replace(/\/\/.*$/, "").replace(/\/\*.*\*\//g, "");
-
-  lines.forEach((rawLine, idx) => {
-    const lineNo = idx + 1;
-    let line = stripComments(rawLine).trim();
-    if (!line) return;
-
-    // class / interface
-    let m;
-    if ((m = line.match(/\bclass\s+([A-Za-z_]\w*)/))) {
-      const name = m[1];
-      currentClass = name;
-      let extendsMatch = line.match(/\bextends\s+([A-Za-z_]\w*)/);
-      let implementsMatch = line.match(/\bimplements\s+([A-Za-z_][\w,\s]*)/);
-      let info = `class ${name}`;
-      if (extendsMatch) info += ` extends ${extendsMatch[1]}`;
-      if (implementsMatch) info += ` implements ${implementsMatch[1].trim()}`;
-      classes.push(`${info}  (line ${lineNo})`);
-      if (extendsMatch || implementsMatch) {
-        inheritanceInfo.push(`${info}  (line ${lineNo})`);
-      }
-      return;
-    }
-
-    if ((m = line.match(/\binterface\s+([A-Za-z_]\w*)/))) {
-      interfaces.push(`interface ${m[1]}  (line ${lineNo})`);
-      return;
-    }
-
-    // 'new' expressions
-    if (line.includes(" new ")) {
-      news.push(`"${rawLine.trim()}"  (line ${lineNo})`);
-    }
-
-    // 'this' and 'super'
-    if (line.includes("this.")) {
-      thisRefs.push(`"${rawLine.trim()}"  (line ${lineNo})`);
-    }
-    if (line.includes("super") && !line.includes("super(") == false) {
-      superRefs.push(`"${rawLine.trim()}"  (line ${lineNo})`);
-    }
-
-    // inheritance keywords in non-class lines
-    if (/\bextends\b|\bimplements\b/.test(line)) {
-      inheritanceInfo.push(`"${rawLine.trim()}"  (line ${lineNo})`);
-    }
-
-    // exceptions
-    if (/\btry\b/.test(line) || /\bcatch\b/.test(line) ||
-        /\bthrow\b/.test(line) || /\bthrows\b/.test(line)) {
-      exceptions.push(`"${rawLine.trim()}"  (line ${lineNo})`);
-    }
-
-    // skip obvious control-flow statements from method detection
-    const controlKeywords = ["if ", "for ", "while ", "switch ", "catch ", "try ", "do "];
-    const isControl = controlKeywords.some(kw => line.startsWith(kw) || line.startsWith(kw.trim() + "("));
-
-    // methods / constructors heuristic
-    if (!isControl && /\w+\s*\(.*\)\s*[{;]?$/.test(line)) {
-      // break on '(' to find method name
-      const sig = line.replace(/{.*$/, "").trim();
-      const parts = sig.split(/\s+/);
-      const parenIndex = sig.indexOf("(");
-      const beforeParen = sig.substring(0, parenIndex).trim();
-      const nameMatch = beforeParen.match(/([A-Za-z_]\w*)$/);
-      const name = nameMatch ? nameMatch[1] : null;
-
-      if (name) {
-        // constructor if name == currentClass
-        if (currentClass && name === currentClass) {
-          constructors.push(`Constructor: ${sig}  (line ${lineNo})`);
-        } else {
-          // find return type (very heuristic)
-          let returnType = "unknown";
-          if (parts.length >= 2) {
-            returnType = parts[parts.length - 2];
-          }
-          methods.push(`Method: ${name}  → returns ${returnType}  (line ${lineNo})`);
-        }
-
-        if (sig.includes(" static ")) {
-          staticMembers.push(`"${rawLine.trim()}"  (line ${lineNo})`);
-        }
-      }
-      return;
-    }
-
-    // fields (very rough): has ';', not '(', not 'class', not 'interface'
-    if (line.endsWith(";") && !line.includes("(") && !line.includes(")") &&
-        !line.includes(" class ") && !line.startsWith("class ") &&
-        !line.includes(" interface ") && !line.startsWith("interface ")) {
-      // ignore import/package
-      if (line.startsWith("import ") || line.startsWith("package ")) return;
-      let isStatic = /\bstatic\b/.test(line);
-      let isFinal  = /\bfinal\b/.test(line);
-      let fieldInfo = line.replace(/;/, "").trim();
-      fields.push(`${fieldInfo}  (line ${lineNo})`);
-      if (isStatic) staticMembers.push(`"${rawLine.trim()}"  (line ${lineNo})`);
-      return;
-    }
-  });
-
-  // Populate UI
-  const summaryEl = document.getElementById("analyzeSummary");
-  const outClasses = document.getElementById("analyzeClasses");
-  const outInterfaces = document.getElementById("analyzeInterfaces");
-  const outFields = document.getElementById("analyzeFields");
-  const outCtors = document.getElementById("analyzeConstructors");
-  const outMethods = document.getElementById("analyzeMethods");
-  const outStatic = document.getElementById("analyzeStatic");
-  const outNew = document.getElementById("analyzeNew");
-  const outThis = document.getElementById("analyzeThis");
-  const outSuper = document.getElementById("analyzeSuper");
-  const outInherit = document.getElementById("analyzeInherit");
-  const outExc = document.getElementById("analyzeExceptions");
-
-  function fillList(listEl, arr) {
-    listEl.innerHTML = "";
-    if (!arr.length) {
-      const li = document.createElement("li");
-      li.textContent = "(none detected)";
-      listEl.appendChild(li);
-    } else {
-      arr.forEach(item => {
-        const li = document.createElement("li");
-        li.textContent = item;
-        listEl.appendChild(li);
-      });
-    }
+    printArea(c);
   }
 
-  const totalClasses = classes.length;
-  const totalInterfaces = interfaces.length;
-  const totalFields = fields.length;
-  const totalMethods = methods.length;
-  const totalCtors = constructors.length;
-
-  summaryEl.textContent =
-    `Detected ${totalClasses} class(es), ${totalInterfaces} interface(s), `
-    + `${totalFields} field(s), ${totalCtors} constructor(s), ${totalMethods} method(s).`;
-
-  fillList(outClasses, classes);
-  fillList(outInterfaces, interfaces);
-  fillList(outFields, fields);
-  fillList(outCtors, constructors);
-  fillList(outMethods, methods);
-  fillList(outStatic, staticMembers);
-  fillList(outNew, news);
-  fillList(outThis, thisRefs);
-  fillList(outSuper, superRefs);
-  fillList(outInherit, inheritanceInfo);
-  fillList(outExc, exceptions);
+  public static void printArea(Circle c) {
+    System.out.println("Radius = " + c.radius);
+  }
 }
+`,
+      console: `Radius = 1
+Radius = 10`,
+      steps: [
+        "1. main() starts and creates a Circle object with radius 1; c points to that object.",
+        "2. printArea(c) is called; the parameter c still points to the same Circle object.",
+        "3. printArea prints the radius field of that object: 1.",
+        "4. Back in main, c.radius = 10 changes the radius stored inside that same object.",
+        "5. Calling printArea(c) again prints the updated radius 10.",
+        "6. This shows that methods can modify the same object when passed a reference."
+      ],
+      diagram: `<pre>Stack
+  main():
+    c → obj#1 (Circle)
+  printArea():
+    c → obj#1 (same Circle)
 
-/* ====== PWA: service worker registration ====== */
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .catch(err => console.log('SW registration failed:', err));
-  });
+Heap
+  obj#1:
+    radius = 10</pre>`
+    }
+  };
+
+  // ------------------------------------------------------------
+  // CHAPTER 10 EXAMPLES (paired core + test)
+  // ------------------------------------------------------------
+  const chapter10Examples = {
+    "Loan": {
+      coreTitle: "Loan.java",
+      coreCode: `
+public class Loan {
+  private double <span class="field explainable" data-explain="Annual percentage interest rate, e.g., 8.25%">annualInterestRate</span>;
+  private int <span class="field explainable" data-explain="Length of the loan in years">numberOfYears</span>;
+  private double <span class="field explainable" data-explain="Principal borrowed">loanAmount</span>;
+  private java.util.Date <span class="field explainable" data-explain="When this Loan object was created">loanDate</span>;
+
+  <span class="ctor explainable" data-explain="Default constructor delegates to the full constructor">public Loan()</span> {
+    this(2.5, 1, 1000);
+  }
+
+  <span class="ctor explainable" data-explain="Construct a loan with interest, years, and amount">public Loan</span>(
+      double annualInterestRate, int numberOfYears, double loanAmount) {
+    this.annualInterestRate = annualInterestRate;
+    this.numberOfYears = numberOfYears;
+    this.loanAmount = loanAmount;
+    loanDate = new java.util.Date();
+  }
+
+  public double getAnnualInterestRate() { return annualInterestRate; }
+  public int getNumberOfYears() { return numberOfYears; }
+  public double getLoanAmount() { return loanAmount; }
+  public java.util.Date getLoanDate() { return loanDate; }
+
+  /** Monthly payment using amortization formula */
+  public double getMonthlyPayment() {
+    double monthlyInterestRate = annualInterestRate / 1200;
+    double monthlyPayment = loanAmount * monthlyInterestRate /
+      (1 - 1 / Math.pow(1 + monthlyInterestRate, numberOfYears * 12));
+    return monthlyPayment;
+  }
+
+  public double getTotalPayment() {
+    return getMonthlyPayment() * numberOfYears * 12;
+  }
 }
+`,
+      testTitle: "TestLoanClass.java",
+      testCode: `
+public class TestLoanClass {
+  public static void main(String[] args) {
+    java.util.Scanner input = new java.util.Scanner(System.in);
 
-window.onload = function() {
-  showChapter('chap9');
-  loadCh9Example('simpleCircle');
-};
-</script>
-</head>
-<body>
-<div class="page">
-  <h1>Java Visualizer – Chapters 9–12</h1>
-  <h2>Objects, Classes, OOP Thinking, Inheritance, Exceptions</h2>
+    System.out.print(
+      "Enter yearly interest rate, for example, 8.25: ");
+    double annualInterestRate = input.nextDouble();
 
-  <!-- Chapter Tabs -->
-  <div id="chapterTabs">
-    <div class="chap-tab active" data-target="chap9"  onclick="showChapter('chap9')">Ch 9 – Objects & Classes</div>
-    <div class="chap-tab"        data-target="chap10" onclick="showChapter('chap10')">Ch 10 – OOP Thinking</div>
-    <div class="chap-tab"        data-target="chap11" onclick="showChapter('chap11')">Ch 11 – Inheritance</div>
-    <div class="chap-tab"        data-target="chap12" onclick="showChapter('chap12')">Ch 12 – Exceptions</div>
-    <div class="chap-tab"        data-target="analyzer" onclick="showChapter('analyzer')">Code Analyzer</div>
-  </div>
+    System.out.print("Enter number of years as an integer: ");
+    int numberOfYears = input.nextInt();
 
-  <!-- Highlight Controls -->
-  <div id="controlsWrapper">
-    <div id="controls">
-      <button onclick="toggleFields()">Fields</button>
-      <button onclick="toggleConstructors()">Constructors</button>
-      <button onclick="toggleStatic()">static</button>
-      <button onclick="toggleThisKeyword()">this</button>
-      <button onclick="toggleNewKeyword()">new (object creation)</button>
-      <button onclick="toggleInheritance()">extends / super / override</button>
-      <button onclick="toggleExceptions()">try / catch / throw / throws</button>
-    </div>
-    <div class="legend">
-      <span class="field">Fields</span>
-      <span class="ctor">Constructors</span>
-      <span class="stat">static</span>
-      <span class="thisc">this</span>
-      <span class="newc">new</span>
-      <span class="inh">Inheritance</span>
-      <span class="exc">Exceptions</span>
-    </div>
-  </div>
+    System.out.print("Enter loan amount, for example, 120000.95: ");
+    double loanAmount = input.nextDouble();
 
-  <!-- ===================== CHAPTER 9 ===================== -->
-  <div class="chapter-section active-chap" id="chap9">
-    <h2>Chapter 9 – Objects and Classes (Interactive Examples)</h2>
+    Loan loan =
+      new Loan(annualInterestRate, numberOfYears, loanAmount);
 
-    <div class="ex-panel">
-      <h3>Choose an example from Chapter 9:</h3>
-      <div class="ex9-picker">
-        <button class="ex9-btn active" data-exkey="simpleCircle"
-                onclick="loadCh9Example('simpleCircle')">
-          SimpleCircle (basic objects)
-        </button>
-        <button class="ex9-btn" data-exkey="staticCircle"
-                onclick="loadCh9Example('staticCircle')">
-          CircleWithStaticMembers (static)
-        </button>
-        <button class="ex9-btn" data-exkey="passObject"
-                onclick="loadCh9Example('passObject')">
-          TestPassObject (pass object)
-        </button>
-        <button class="ex9-btn" data-exkey="tv"
-                onclick="loadCh9Example('tv')">
-          TV / TestTV (state & behavior)
-        </button>
-      </div>
-    </div>
+    System.out.printf("The loan was created on %s\\n" +
+      "The monthly payment is %.2f\\nThe total payment is %.2f\\n",
+      loan.getLoanDate().toString(), loan.getMonthlyPayment(),
+      loan.getTotalPayment());
+  }
+}
+`,
+      console: `Enter yearly interest rate, for example, 8.25: 8.25
+Enter number of years as an integer: 5
+Enter loan amount, for example, 120000.95: 120000.95
+The loan was created on Wed Jan 15 00:00:00 CST 2025
+The monthly payment is 2447.57
+The total payment is 146854.17`,
+      steps: [
+        "1. The program starts in TestLoanClass.main().",
+        "2. A Scanner reads three values from the user: interest rate, years, and loan amount.",
+        "3. new Loan(annualInterestRate, numberOfYears, loanAmount) creates a Loan object on the heap.",
+        "4. Inside the Loan constructor, fields are set and loanDate is captured.",
+        "5. back in main, getMonthlyPayment() uses the amortization formula to compute a monthly payment.",
+        "6. getTotalPayment() multiplies the monthly payment by 12 * numberOfYears.",
+        "7. printf prints the loan date, monthly payment, and total payment for the user."
+      ],
+      diagram: `<pre>Stack
+  main():
+    input → Scanner
+    annualInterestRate = 8.25
+    numberOfYears      = 5
+    loanAmount         = 120000.95
+    loan → obj#1 (Loan)
 
-    <div class="ex9-layout">
-      <!-- Left: code viewer -->
-      <div>
-        <div class="code-title" id="ex9Title">
-          SimpleCircle – basic objects and methods
-        </div>
-        <pre class="code-block" id="ex9Code"></pre>
-      </div>
+Heap
+  obj#1 Loan:
+    annualInterestRate = 8.25
+    numberOfYears      = 5
+    loanAmount         = 120000.95
+    loanDate           = (creation date)</pre>`
+    },
 
-      <!-- Right: steps + console + analysis -->
-      <div class="ex-panel">
-        <h3>Step-by-step execution</h3>
-        <ol class="ex-steps" id="ex9Steps"></ol>
+    "BMI": {
+      coreTitle: "BMI.java",
+      coreCode: `
+public class BMI {
+  private String <span class="field explainable" data-explain="Person's name">name</span>;
+  private int <span class="field explainable" data-explain="Person's age in years">age</span>;
+  private double <span class="field explainable" data-explain="Weight in pounds">weight</span>;
+  private double <span class="field explainable" data-explain="Height in inches">height</span>;
 
-        <button class="run-btn" onclick="runCh9Example()">▶ Run Example (simulate output)</button>
+  public static final double KILOGRAMS_PER_POUND = 0.45359237;
+  public static final double METERS_PER_INCH = 0.0254;
 
-        <h3>Simulated console output</h3>
-        <pre class="console-block" id="ex9Console"></pre>
+  <span class="ctor explainable" data-explain="Construct BMI with all attributes">public BMI</span>(
+      String name, int age, double weight, double height) {
+    this.name = name;
+    this.age = age;
+    this.weight = weight;
+    this.height = height;
+  }
 
-        <h3>Full code analysis</h3>
-        <ul class="ex-analysis" id="ex9Analysis"></ul>
-      </div>
-    </div>
-  </div>
+  <span class="ctor explainable" data-explain="Overloaded constructor with default age 20">public BMI</span>(
+      String name, double weight, double height) {
+    this(name, 20, weight, height);
+  }
 
-  <!-- ===================== CHAPTER 10 ===================== -->
-  <div class="chapter-section" id="chap10">
-    <h2>Chapter 10 – Object-Oriented Thinking</h2>
+  public double getBMI() {
+    double bmi = weight * KILOGRAMS_PER_POUND /
+      ((height * METERS_PER_INCH) * (height * METERS_PER_INCH));
+    return Math.round(bmi * 100) / 100.0;
+  }
 
-    <div class="code-title">Course.java (Aggregation)</div>
-    <div class="code-block">
-package chapter10;
+  public String getStatus() {
+    double bmi = getBMI();
+    if (bmi < 18.5) return "Underweight";
+    else if (bmi < 25) return "Normal";
+    else if (bmi < 30) return "Overweight";
+    else return "Obese";
+  }
 
+  public String getName() { return name; }
+}
+`,
+      testTitle: "UseBMIClass.java",
+      testCode: `
+public class UseBMIClass {
+  public static void main(String[] args) {
+    BMI bmi1 = new BMI("John Doe", 18, 145, 70);
+    System.out.println("The BMI for " + bmi1.getName() + " is "
+      + bmi1.getBMI() + " " + bmi1.getStatus());
+
+    BMI bmi2 = new BMI("Peter King", 215, 70);
+    System.out.println("The BMI for " + bmi2.getName() + " is "
+      + bmi2.getBMI() + " " + bmi2.getStatus());
+  }
+}
+`,
+      console: `The BMI for John Doe is 20.81 Normal
+The BMI for Peter King is 30.85 Obese`,
+      steps: [
+        "1. main() creates bmi1 with all parameters explicitly (name, age, weight, height).",
+        "2. getBMI() converts pounds to kilograms and inches to meters, then computes BMI.",
+        "3. getStatus() checks BMI ranges and returns a string label.",
+        "4. The first println prints John Doe's BMI and status (Normal).",
+        "5. bmi2 uses the overloaded constructor, defaulting age to 20.",
+        "6. Peter King's BMI is computed and categorized as Obese."
+      ],
+      diagram: `<pre>Stack
+  main():
+    bmi1 → obj#1 (BMI)
+    bmi2 → obj#2 (BMI)
+
+Heap
+  obj#1 BMI:
+    name   = "John Doe"
+    age    = 18
+    weight = 145
+    height = 70
+
+  obj#2 BMI:
+    name   = "Peter King"
+    age    = 20
+    weight = 215
+    height = 70</pre>`
+    },
+
+    "Course": {
+      coreTitle: "Course.java",
+      coreCode: `
 public class Course {
-  <span data-role="field">private String courseName;</span>
-  <span data-role="field">private String[] students = new String[100];</span>
-  <span data-role="field">private int numberOfStudents;</span>
+  private String <span class="field explainable" data-explain="Course title">courseName</span>;
+  private String[] <span class="field explainable" data-explain="Students enrolled in this course">students</span>
+      = new String[100];
+  private int <span class="field explainable" data-explain="Current number of students">numberOfStudents</span>;
 
-  <span data-role="constructor">public Course(String courseName)</span> {
-    <span data-role="this">this.courseName</span> = courseName;
+  <span class="ctor explainable" data-explain="Construct a course with a given name">public Course</span>(
+      String courseName) {
+    this.courseName = courseName;
   }
 
   public void addStudent(String student) {
@@ -1185,30 +857,85 @@ public class Course {
   public String getCourseName() {
     return courseName;
   }
+
+  public void dropStudent(String student) {
+    // Left as an exercise in the book
+  }
 }
-    </div>
+`,
+      testTitle: "TestCourse.java",
+      testCode: `
+public class TestCourse {
+  public static void main(String[] args) {
+    Course course1 = new Course("Data Structures");
+    Course course2 = new Course("Database Systems");
 
-    <div class="code-title">StackOfIntegers.java</div>
-    <div class="code-block">
-package chapter10;
+    course1.addStudent("Peter Jones");
+    course1.addStudent("Brian Smith");
+    course1.addStudent("Anne Kennedy");
 
+    course2.addStudent("Peter Jones");
+    course2.addStudent("Steve Smith");
+
+    System.out.println("Number of students in course1: "
+      + course1.getNumberOfStudents());
+    String[] students = course1.getStudents();
+    for (int i = 0; i < course1.getNumberOfStudents(); i++)
+      System.out.print(students[i] + ", ");
+
+    System.out.println();
+    System.out.print("Number of students in course2: "
+      + course2.getNumberOfStudents());
+  }
+}
+`,
+      console: `Number of students in course1: 3
+Peter Jones, Brian Smith, Anne Kennedy, 
+Number of students in course2: 2`,
+      steps: [
+        "1. main() creates two Course objects: course1 and course2.",
+        "2. Students are added to each course via addStudent(), which appends to the internal array.",
+        "3. course1.getNumberOfStudents() returns 3.",
+        "4. The loop retrieves course1's students and prints their names.",
+        "5. course2.getNumberOfStudents() returns 2 and is printed.",
+        "6. This example illustrates aggregation: a Course 'has many' Students stored in an array."
+      ],
+      diagram: `<pre>Stack
+  main():
+    course1 → obj#1 (Course)
+    course2 → obj#2 (Course)
+    students → reference to array inside course1
+
+Heap
+  obj#1 Course:
+    courseName       = "Data Structures"
+    numberOfStudents = 3
+    students[0..2]   = "Peter Jones", "Brian Smith", "Anne Kennedy"
+
+  obj#2 Course:
+    courseName       = "Database Systems"
+    numberOfStudents = 2
+    students[0..1]   = "Peter Jones", "Steve Smith"</pre>`
+    },
+
+    "Stack": {
+      coreTitle: "StackOfIntegers.java",
+      coreCode: `
 public class StackOfIntegers {
-  <span data-role="field">private int[] elements;</span>
-  <span data-role="field">private int size;</span>
-  <span data-role="static">public static final int DEFAULT_CAPACITY = 16;</span>
+  private int[] <span class="field explainable" data-explain="Array storing elements of the stack">elements</span>;
+  private int <span class="field explainable" data-explain="Number of elements in the stack">size</span>;
+  public static final int <span class="stat explainable" data-explain="Default capacity for the stack">DEFAULT_CAPACITY</span> = 16;
 
-  <span data-role="constructor">public StackOfIntegers()</span> {
-    <span data-role="this">this</span>(DEFAULT_CAPACITY);
+  <span class="ctor explainable" data-explain="Constructs a stack with default capacity">public StackOfIntegers()</span> {
+    this(DEFAULT_CAPACITY);
   }
 
-  <span data-role="constructor">public StackOfIntegers(int capacity)</span> {
-    elements = <span data-role="new">new int[capacity]</span>;
+  <span class="ctor explainable" data-explain="Constructs a stack with a given capacity">public StackOfIntegers</span>(
+      int capacity) {
+    elements = new int[capacity];
   }
 
   public void push(int value) {
-    if (size >= elements.length) {
-      // resize logic omitted
-    }
     elements[size++] = value;
   }
 
@@ -1216,288 +943,457 @@ public class StackOfIntegers {
     return elements[--size];
   }
 
+  public int peek() {
+    return elements[size - 1];
+  }
+
   public boolean empty() {
     return size == 0;
   }
-}
-    </div>
-  </div>
 
-  <!-- ===================== CHAPTER 11 ===================== -->
-  <div class="chapter-section" id="chap11">
-    <h2>Chapter 11 – Inheritance</h2>
-
-    <div class="code-title">SimpleGeometricObject.java (Base Class)</div>
-    <div class="code-block">
-package chapter11;
-
-public class SimpleGeometricObject {
-  <span data-role="field">private String color = "white";</span>
-  <span data-role="field">private boolean filled;</span>
-  <span data-role="field">private java.util.Date dateCreated;</span>
-
-  <span data-role="constructor">public SimpleGeometricObject()</span> {
-    dateCreated = <span data-role="new">new java.util.Date()</span>;
-  }
-
-  <span data-role="constructor">public SimpleGeometricObject(String color, boolean filled)</span> {
-    dateCreated = <span data-role="new">new java.util.Date()</span>;
-    <span data-role="this">this.color</span> = color;
-    <span data-role="this">this.filled</span> = filled;
-  }
-
-  // getters, setters, and toString omitted
-}
-    </div>
-
-    <div class="code-title">CircleFromSimpleGeometricObject.java</div>
-    <div class="code-block">
-package chapter11;
-
-public class CircleFromSimpleGeometricObject
-  <span data-role="extends"
-        data-explain="ch11_circle_extends"
-        class="explainable">extends SimpleGeometricObject</span> {
-  <span data-role="field">private double radius;</span>
-
-  <span data-role="constructor">public CircleFromSimpleGeometricObject()</span> {
-  }
-
-  <span data-role="constructor">public CircleFromSimpleGeometricObject(double radius)</span> {
-    <span data-role="this">this.radius</span> = radius;
-  }
-
-  <span data-role="constructor">public CircleFromSimpleGeometricObject(double radius, String color, boolean filled)</span> {
-    <span data-role="super"
-          data-explain="ch11_circle_super_ctor"
-          class="explainable">super(color, filled)</span>;
-    <span data-role="this">this.radius</span> = radius;
-  }
-
-  public double getRadius() {
-    return radius;
-  }
-
-  public double getArea() {
-    return radius * radius * Math.PI;
-  }
-
-  public double getDiameter() {
-    return 2 * radius;
+  public int getSize() {
+    return size;
   }
 }
-    </div>
-
-    <div class="code-title">RectangleFromSimpleGeometricObject.java</div>
-    <div class="code-block">
-package chapter11;
-
-public class RectangleFromSimpleGeometricObject
-  <span data-role="extends">extends SimpleGeometricObject</span> {
-  <span data-role="field">private double width;</span>
-  <span data-role="field">private double height;</span>
-
-  <span data-role="constructor">public RectangleFromSimpleGeometricObject()</span> {
-  }
-
-  <span data-role="constructor">public RectangleFromSimpleGeometricObject(double width, double height)</span> {
-    <span data-role="this">this.width</span> = width;
-    <span data-role="this">this.height</span> = height;
-  }
-
-  public double getArea() {
-    return width * height;
-  }
-
-  public double getPerimeter() {
-    return 2 * (width + height);
-  }
-}
-    </div>
-
-    <div class="code-title">TestCircleRectangle.java</div>
-    <div class="code-block">
-package chapter11;
-
-public class TestCircleRectangle {
+`,
+      testTitle: "TestStackOfIntegers.java",
+      testCode: `
+public class TestStackOfIntegers {
   public static void main(String[] args) {
-    CircleFromSimpleGeometricObject circle =
-      <span data-role="new">new CircleFromSimpleGeometricObject(1)</span>;
-    System.out.println("A circle " + circle.toString());
-    System.out.println("The radius is " + circle.getRadius());
-    System.out.println("The area is " + circle.getArea());
-    System.out.println("The diameter is " + circle.getDiameter());
+    StackOfIntegers stack = new StackOfIntegers();
 
-    RectangleFromSimpleGeometricObject rectangle =
-      <span data-role="new">new RectangleFromSimpleGeometricObject(2, 4)</span>;
-    System.out.println("\\nA rectangle " + rectangle.toString());
-    System.out.println("The area is " + rectangle.getArea());
-    System.out.println("The perimeter is " +
-      rectangle.getPerimeter());
+    for (int i = 0; i < 10; i++)
+      stack.push(i);
+
+    while (!stack.empty())
+      System.out.print(stack.pop() + " ");
   }
 }
-    </div>
-  </div>
+`,
+      console: `9 8 7 6 5 4 3 2 1 0 `,
+      steps: [
+        "1. main() creates a StackOfIntegers with default capacity 16.",
+        "2. The for-loop pushes 0,1,2,...,9 onto the stack (10 elements).",
+        "3. The top of the stack after the loop is 9.",
+        "4. The while-loop pops elements until the stack is empty.",
+        "5. Because stacks are LIFO, the numbers come out in reverse order: 9 down to 0.",
+        "6. This demonstrates how a stack can be used to reverse a sequence."
+      ],
+      diagram: `<pre>Stack
+  main():
+    stack → obj#1 (StackOfIntegers)
 
-  <!-- ===================== CHAPTER 12 ===================== -->
-  <div class="chapter-section" id="chap12">
-    <h2>Chapter 12 – Exception Handling</h2>
+Heap
+  obj#1 StackOfIntegers:
+    elements[0..9] = 0,1,2,3,4,5,6,7,8,9
+    size           = 0  (after popping all elements)</pre>`
+    },
 
-    <div class="code-title">QuotientWithException.java</div>
-    <div class="code-block">
-package chapter12;
-
-import java.util.Scanner;
-
-public class QuotientWithException {
+    "Palindrome": {
+      coreTitle: "PalindromeIgnoreNonAlphanumeric.java (core)",
+      coreCode: `
+public class PalindromeIgnoreNonAlphanumeric {
   public static void main(String[] args) {
-    Scanner input = new Scanner(System.in);
-    System.out.print("Enter two integers: ");
-    int number1 = input.nextInt();
-    int number2 = input.nextInt();
+    java.util.Scanner input = new java.util.Scanner(System.in);
 
-    <span data-role="try"
-          data-explain="ch12_try"
-          class="explainable">try</span> { // try block
-      if (number2 == 0)
-        <span data-role="throw"
-              data-explain="ch12_throw_zero"
-              class="explainable">throw new ArithmeticException("Divisor cannot be zero")</span>;
+    System.out.print("Enter a string: ");
+    String s = input.nextLine();
 
-      int result = number1 / number2;
-      System.out.println(number1 + " / " + number2 + " is " + result);
+    System.out.println("Ignoring non-alphanumeric characters, \\nis "
+      + s + " a palindrome? " + isPalindrome(s));
+  }
+
+  public static boolean isPalindrome(String s) {
+    String filtered = filter(s);
+    String reversed = reverse(filtered);
+    return filtered.equalsIgnoreCase(reversed);
+  }
+
+  public static String filter(String s) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < s.length(); i++) {
+      char ch = s.charAt(i);
+      if (Character.isLetterOrDigit(ch)) {
+        sb.append(ch);
+      }
     }
-    <span data-role="catch"
-          data-explain="ch12_catch"
-          class="explainable">catch (ArithmeticException ex)</span> {
-      System.out.println("Exception: " + ex.getMessage());
-    }
+    return sb.toString();
+  }
 
-    System.out.println("Execution continues after the catch block.");
+  public static String reverse(String s) {
+    StringBuilder sb = new StringBuilder(s);
+    sb.reverse();
+    return sb.toString();
   }
 }
-    </div>
+`,
+      testTitle: "Standalone Program",
+      testCode: `// This class contains both main and helper methods.
+// There is no separate Test class.`,
+      console: `Enter a string: A man, a plan, a canal: Panama
+Ignoring non-alphanumeric characters, 
+is A man, a plan, a canal: Panama a palindrome? true`,
+      steps: [
+        "1. main() prompts the user for a string (which may contain spaces/punctuation).",
+        "2. isPalindrome(s) is called with the original string.",
+        "3. filter(s) builds a new string with only letters and digits.",
+        "4. reverse(filtered) creates a reversed version.",
+        "5. equalsIgnoreCase() compares the filtered and reversed strings, ignoring case.",
+        "6. If they match, the original input is considered a palindrome ignoring non-alphanumeric characters."
+      ],
+      diagram: `<pre>Stack
+  main():
+    s         = "A man, a plan, a canal: Panama"
+  isPalindrome():
+    filtered  = "AmanaplanacanalPanama"
+    reversed  = "amanaPlanaCanalpanamA"
 
-    <div class="code-title">Custom Exception Example</div>
-    <div class="code-block">
-package chapter12;
+Heap
+  String objects:
+    original = "A man, a plan, a canal: Panama"
+    filtered = "AmanaplanacanalPanama"
+    reversed = "amanaPlanaCanalpanamA"</pre>`
+    },
 
-class InvalidRadiusException <span data-role="extends">extends Exception</span> {
-  <span data-role="constructor">public InvalidRadiusException(String message)</span> {
-    <span data-role="super">super(message)</span>;
-  }
-}
+    "LargeFact": {
+      coreTitle: "LargeFactorial.java",
+      coreCode: `
+import java.math.BigInteger;
 
-class CircleWithCustomException {
-  <span data-role="field">private double radius;</span>
-
-  <span data-role="constructor">public CircleWithCustomException(double radius)</span>
-      <span data-role="throws">throws InvalidRadiusException</span> {
-    setRadius(radius);
-  }
-
-  public void setRadius(double radius)
-      <span data-role="throws">throws InvalidRadiusException</span> {
-    if (radius &lt; 0)
-      <span data-role="throw">throw new InvalidRadiusException("Radius cannot be negative")</span>;
-    <span data-role="this">this.radius</span> = radius;
-  }
-}
-    </div>
-
-    <div class="code-title">TestCircleWithCustomException.java</div>
-    <div class="code-block">
-package chapter12;
-
-public class TestCircleWithCustomException {
+public class LargeFactorial {
   public static void main(String[] args) {
-    <span data-role="try">try</span> { // try block
-      CircleWithCustomException c =
-        <span data-role="new">new CircleWithCustomException(-5)</span>;
-      System.out.println("Circle created.");
-    }
-    <span data-role="catch">catch (InvalidRadiusException ex)</span> {
-      System.out.println("Error: " + ex.getMessage());
-    }
+    System.out.println("50! is \\n" + factorial(50));
+  }
+
+  public static BigInteger factorial(long n) {
+    BigInteger result = BigInteger.ONE;
+    for (int i = 1; i <= n; i++)
+      result = result.multiply(new BigInteger(i + ""));
+    return result;
   }
 }
-    </div>
-  </div>
+`,
+      testTitle: "Standalone Program",
+      testCode: `// LargeFactorial is itself the main and utility class.
+// It demonstrates using BigInteger for very large results.`,
+      console: `50! is 
+30414093201713378043612608166064768844377641568960512000000000000`,
+      steps: [
+        "1. main() calls factorial(50).",
+        "2. factorial uses BigInteger, since 50! is far bigger than fits in long or double.",
+        "3. result starts as BigInteger.ONE.",
+        "4. For i from 1 to 50, result = result * i (wrapped in a BigInteger).",
+        "5. After the loop, result holds 50! exactly with no overflow.",
+        "6. main() prints the full value of 50!."
+      ],
+      diagram: `<pre>Stack
+  main():
+    (no named variables besides args)
+  factorial():
+    n      = 50
+    i      = loop variable
+    result = BigInteger (grows each iteration)
 
-  <!-- ===================== CODE ANALYZER ===================== -->
-  <div class="chapter-section" id="analyzer">
-    <h2>Code Analyzer – Paste Any Java Snippet</h2>
+Heap
+  BigInteger objects created during multiplications,
+  final result representing 50! exactly.</pre>`
+    }
+  };
 
-    <div class="analyzer-layout">
-      <!-- Left: input -->
-      <div>
-        <div class="ex-panel">
-          <h3>1. Paste your Java code here</h3>
-          <textarea id="analyzeInput" class="analyzer-input"
-            placeholder="Paste any Java class, method, or snippet here…
-For example:
-public class Demo {
-  private int count;
-  public Demo(int count) { this.count = count; }
-  public void show() { System.out.println(count); }
-}"></textarea>
-          <button style="margin-top:8px;" onclick="analyzePastedCode()">▶ Analyze Code</button>
-        </div>
-      </div>
+  // ------------------------------------------------------------
+  // EXECUTION STEPPER (shared by chapters 9 & 10)
+  // ------------------------------------------------------------
+  let currentSteps = [];
+  let currentStepIndex = 0;
 
-      <!-- Right: analysis -->
-      <div class="ex-panel">
-        <h3>2. Structured breakdown</h3>
-        <div id="analyzeSummary" class="analyzer-summary">
-          (Nothing analyzed yet. Paste code and click “Analyze Code”.)
-        </div>
+  function setStepsForExample(steps, diagramHtml, chapterPrefix) {
+    currentSteps = steps || [];
+    currentStepIndex = 0;
 
-        <div class="analyzer-section-title">Classes</div>
-        <ul id="analyzeClasses" class="analyzer-list"></ul>
+    const diagramEl = document.getElementById(`ex${chapterPrefix}Diagram`);
+    if (diagramEl) {
+      diagramEl.innerHTML = diagramHtml || "(No diagram yet.)";
+    }
+    updateStepText(chapterPrefix);
+  }
 
-        <div class="analyzer-section-title">Interfaces</div>
-        <ul id="analyzeInterfaces" class="analyzer-list"></ul>
+  function updateStepText(chapterPrefix) {
+    const stepEl = document.getElementById(`ex${chapterPrefix}StepText`);
+    if (!stepEl) return;
 
-        <div class="analyzer-section-title">Fields (instance or static)</div>
-        <ul id="analyzeFields" class="analyzer-list"></ul>
+    if (!currentSteps.length) {
+      stepEl.textContent = "(No step-by-step explanation provided for this example.)";
+    } else {
+      stepEl.textContent = currentSteps[currentStepIndex];
+    }
+  }
 
-        <div class="analyzer-section-title">Constructors</div>
-        <ul id="analyzeConstructors" class="analyzer-list"></ul>
+  function nextStep(chapterPrefix) {
+    if (!currentSteps.length) return;
+    currentStepIndex = (currentStepIndex + 1) % currentSteps.length;
+    updateStepText(chapterPrefix);
+  }
 
-        <div class="analyzer-section-title">Methods</div>
-        <ul id="analyzeMethods" class="analyzer-list"></ul>
+  function prevStep(chapterPrefix) {
+    if (!currentSteps.length) return;
+    currentStepIndex = (currentStepIndex - 1 + currentSteps.length) % currentSteps.length;
+    updateStepText(chapterPrefix);
+  }
 
-        <div class="analyzer-section-title">Static members (fields or methods)</div>
-        <ul id="analyzeStatic" class="analyzer-list"></ul>
+  // ------------------------------------------------------------
+  // LOAD A CHAPTER 9 EXAMPLE
+  // ------------------------------------------------------------
+  function loadCH9Example(key) {
+    document.querySelectorAll(".ex9-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("btn_" + key).classList.add("active");
 
-        <div class="analyzer-section-title">Object creation (new)</div>
-        <ul id="analyzeNew" class="analyzer-list"></ul>
+    const ex = chapter9Examples[key];
 
-        <div class="analyzer-section-title">this references</div>
-        <ul id="analyzeThis" class="analyzer-list"></ul>
+    document.getElementById("ex9Code").innerHTML = ex.code;
+    document.getElementById("ex9Console").textContent = ex.console;
 
-        <div class="analyzer-section-title">super / inheritance references</div>
-        <ul id="analyzeSuper" class="analyzer-list"></ul>
+    setStepsForExample(ex.steps, ex.diagram, "9");
 
-        <div class="analyzer-section-title">extends / implements usage</div>
-        <ul id="analyzeInherit" class="analyzer-list"></ul>
+    document.getElementById("chapter9").scrollIntoView({ behavior: "smooth" });
+  }
 
-        <div class="analyzer-section-title">Exceptions (try / catch / throw / throws)</div>
-        <ul id="analyzeExceptions" class="analyzer-list"></ul>
-      </div>
-    </div>
-  </div>
+  // ------------------------------------------------------------
+  // LOAD A CHAPTER 10 EXAMPLE (Option C — auto pairing)
+  // ------------------------------------------------------------
+  function loadCH10Example(key) {
+    document.querySelectorAll(".ex10-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("btn10_" + key).classList.add("active");
 
-</div>
+    const ex = chapter10Examples[key];
 
-<!-- Explain-this-line floating panel -->
-<div id="explainPanel">
-  <div id="explainHeader">
-    <span id="explainTitle">Explanation</span>
-    <button id="explainClose" onclick="closeExplainPanel()">×</button>
-  </div>
-  <div id="explainText">Click any underlined code to see what it does.</div>
-</div>
+    document.getElementById("ex10CoreCode").innerHTML   = ex.coreCode;
+    document.getElementById("ex10TestCode").innerHTML   = ex.testCode;
+    document.getElementById("ex10Console").textContent  = ex.console;
+
+    setStepsForExample(ex.steps, ex.diagram, "10");
+
+    document.getElementById("chapter10").scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ------------------------------------------------------------
+  // ANALYZER: Highlight + Structured Breakdown
+  // ------------------------------------------------------------
+  function analyzePastedCode() {
+    const src = document.getElementById("analyzeInput").value || "";
+    const lines = src.split(/\r?\n/);
+
+    const classes = [];
+    const interfaces = [];
+    const fields = [];
+    const constructors = [];
+    const methods = [];
+    const staticMembers = [];
+    const news = [];
+    const thisRefs = [];
+    const superRefs = [];
+    const inheritanceInfo = [];
+    const exceptions = [];
+
+    let currentClass = null;
+
+    const stripComments = (line) =>
+      line.replace(/\/\/.*$/, "").replace(/\/\*.*\*\//g, "");
+
+    const escapeHtml = (s) =>
+      s.replace(/&/g, "&amp;")
+       .replace(/</g, "&lt;")
+       .replace(/>/g, "&gt;");
+
+    const highlightedLines = [];
+
+    lines.forEach((rawLine, idx) => {
+      const lineNo = idx + 1;
+      let line = stripComments(rawLine).trim();
+
+      // ----- ANALYSIS (lists) -----
+      if (line) {
+        let m;
+
+        // class / interface
+        if ((m = line.match(/\bclass\s+([A-Za-z_]\w*)/))) {
+          const name = m[1];
+          currentClass = name;
+          let extendsMatch = line.match(/\bextends\s+([A-Za-z_]\w*)/);
+          let implementsMatch = line.match(/\bimplements\s+([A-Za-z_][\w,\s]*)/);
+          let info = `class ${name}`;
+          if (extendsMatch) info += ` extends ${extendsMatch[1]}`;
+          if (implementsMatch) info += ` implements ${implementsMatch[1].trim()}`;
+          classes.push(`${info}  (line ${lineNo})`);
+          if (extendsMatch || implementsMatch) {
+            inheritanceInfo.push(`${info}  (line ${lineNo})`);
+          }
+        } else if ((m = line.match(/\binterface\s+([A-Za-z_]\w*)/))) {
+          interfaces.push(`interface ${m[1]}  (line ${lineNo})`);
+        }
+
+        // 'new' expressions
+        if (line.includes(" new ")) {
+          news.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+        }
+
+        // 'this' and 'super'
+        if (line.includes("this")) {
+          thisRefs.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+        }
+        if (line.includes("super")) {
+          superRefs.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+        }
+
+        // inheritance keywords in non-class lines
+        if (/\bextends\b|\bimplements\b/.test(line)) {
+          inheritanceInfo.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+        }
+
+        // exceptions
+        if (/\btry\b/.test(line) || /\bcatch\b/.test(line) ||
+            /\bthrow\b/.test(line) || /\bthrows\b/.test(line)) {
+          exceptions.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+        }
+
+        // skip obvious control-flow statements from method detection
+        const controlKeywords = ["if ", "for ", "while ", "switch ", "catch ", "try ", "do "];
+        const isControl = controlKeywords.some(kw =>
+          line.startsWith(kw) || line.startsWith(kw.trim() + "(")
+        );
+
+        // methods / constructors heuristic
+        if (!isControl && /\w+\s*\(.*\)\s*[{;]?$/.test(line)) {
+          const sig = line.replace(/{.*$/, "").trim();
+          const parts = sig.split(/\s+/);
+          const parenIndex = sig.indexOf("(");
+          const beforeParen = sig.substring(0, parenIndex).trim();
+          const nameMatch = beforeParen.match(/([A-Za-z_]\w*)$/);
+          const name = nameMatch ? nameMatch[1] : null;
+
+          if (name) {
+            if (currentClass && name === currentClass) {
+              constructors.push(`Constructor: ${sig}  (line ${lineNo})`);
+            } else {
+              let returnType = "unknown";
+              if (parts.length >= 2) {
+                returnType = parts[parts.length - 2];
+              }
+              methods.push(`Method: ${name}  → returns ${returnType}  (line ${lineNo})`);
+            }
+
+            if (sig.includes(" static ")) {
+              staticMembers.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+            }
+          }
+        }
+
+        // fields (very rough)
+        if (line.endsWith(";") && !line.includes("(") && !line.includes(")") &&
+            !line.includes(" class ") && !line.startsWith("class ") &&
+            !line.includes(" interface ") && !line.startsWith("interface ") &&
+            !line.startsWith("import ") && !line.startsWith("package ")) {
+          fields.push(`${line.replace(/;/, "").trim()}  (line ${lineNo})`);
+          if (/\bstatic\b/.test(line)) {
+            staticMembers.push(`"${rawLine.trim()}"  (line ${lineNo})`);
+          }
+        }
+      }
+
+      // ----- HIGHLIGHTED CODE VIEW -----
+      let h = escapeHtml(rawLine);
+
+      h = h.replace(/\bstatic\b/g,
+        '<span class="hl-static">static</span>');
+      h = h.replace(/\bnew\b/g,
+        '<span class="hl-new">new</span>');
+      h = h.replace(/\bthis\b/g,
+        '<span class="hl-this">this</span>');
+      h = h.replace(/\bextends\b|\bimplements\b/g,
+        '<span class="hl-inherit">$&</span>');
+      h = h.replace(/\bsuper\b/g,
+        '<span class="hl-inherit">super</span>');
+      h = h.replace(/\btry\b|\bcatch\b|\bthrow\b|\bthrows\b/g,
+        '<span class="hl-exception">$&</span>');
+
+      if (/\b(int|double|boolean|char|String|long|float|short|byte)\b/.test(rawLine) &&
+          rawLine.includes(";") && !rawLine.includes("(")) {
+        h = '<span class="hl-field">' + h + '</span>';
+      }
+
+      highlightedLines.push(h);
+    });
+
+    const codeViewEl = document.getElementById("analyzeCodeView");
+    codeViewEl.innerHTML = highlightedLines.join("\n");
+
+    const summaryEl = document.getElementById("analyzeSummary");
+    const outClasses = document.getElementById("analyzeClasses");
+    const outInterfaces = document.getElementById("analyzeInterfaces");
+    const outFields = document.getElementById("analyzeFields");
+    const outCtors = document.getElementById("analyzeConstructors");
+    const outMethods = document.getElementById("analyzeMethods");
+    const outStatic = document.getElementById("analyzeStatic");
+    const outNew = document.getElementById("analyzeNew");
+    const outThis = document.getElementById("analyzeThis");
+    const outSuper = document.getElementById("analyzeSuper");
+    const outInherit = document.getElementById("analyzeInherit");
+    const outExc = document.getElementById("analyzeExceptions");
+
+    function fillList(listEl, arr) {
+      listEl.innerHTML = "";
+      if (!arr.length) {
+        const li = document.createElement("li");
+        li.textContent = "(none detected)";
+        listEl.appendChild(li);
+      } else {
+        arr.forEach(item => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          listEl.appendChild(li);
+        });
+      }
+    }
+
+    const totalClasses = classes.length;
+    const totalInterfaces = interfaces.length;
+    const totalFields = fields.length;
+    const totalMethods = methods.length;
+    const totalCtors = constructors.length;
+
+    summaryEl.textContent =
+      `Detected ${totalClasses} class(es), ${totalInterfaces} interface(s), `
+      + `${totalFields} field(s), ${totalCtors} constructor(s), ${totalMethods} method(s).`;
+
+    fillList(outClasses, classes);
+    fillList(outInterfaces, interfaces);
+    fillList(outFields, fields);
+    fillList(outCtors, constructors);
+    fillList(outMethods, methods);
+    fillList(outStatic, staticMembers);
+    fillList(outNew, news);
+    fillList(outThis, thisRefs);
+    fillList(outSuper, superRefs);
+    fillList(outInherit, inheritanceInfo);
+    fillList(outExc, exceptions);
+  }
+
+  // ------------------------------------------------------------
+  // INITIALIZE DEFAULT CH9 & CH10 EXAMPLES
+  // ------------------------------------------------------------
+  window.addEventListener("DOMContentLoaded", () => {
+    loadCH9Example("CircleWithStatic");
+    loadCH10Example("Loan");
+  });
+
+  // ------------------------------------------------------------
+  // OPTIONAL: SERVICE WORKER REGISTRATION (for PWA)
+  // ------------------------------------------------------------
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => {
+      console.log('Service worker registration failed:', err);
+    });
+  }
+</script>
 
 </body>
 </html>
